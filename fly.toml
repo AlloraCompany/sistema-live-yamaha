@@ -1,0 +1,46 @@
+# Publicação no Fly.io (São Paulo). Passo a passo em docs/PUBLICACAO.md.
+# O nome do app precisa ser único no Fly; se já existir, troque aqui e no comando de criação.
+app = "live-yamaha-geracao"
+primary_region = "gru"
+# Tempo para encerrar com segurança (fecha as conexões em tempo real e termina as tarefas em andamento).
+kill_timeout = 30
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PUBLIC_BASE_URL = "https://live.eventosyamahageracao.com"
+  # O Fly fica na frente da API: 1 proxy confiável para ler o IP real do cliente.
+  TRUST_PROXY = "1"
+  RUN_WORKER_IN_PROCESS = "true"
+  MAX_SSE_CLIENTS = "20000"
+  DATABASE_POOL_MAX = "20"
+  # Segredos (fly secrets set): DATABASE_URL, ADMIN_PASSWORD, MP_ACCESS_TOKEN, MP_PUBLIC_KEY, MP_WEBHOOK_SECRET.
+  # Antes das credenciais do Mercado Pago (ensaio): fly secrets set ALLOW_START_WITHOUT_PAYMENTS=true
+  # e remova antes da live (fly secrets unset ALLOW_START_WITHOUT_PAYMENTS).
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # Nunca desligar sozinho: durante a live o site precisa estar sempre no ar.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  # Cada espectador mantém 1 conexão aberta (termômetro e liberações em tempo real).
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 10000
+    hard_limit = 20000
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "10s"
+    timeout = "5s"
+    method = "GET"
+    path = "/api/ready"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2gb"

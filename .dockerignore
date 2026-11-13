@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+**/dist
+.tools
+.data
+.env
+.env.*
+!.env.example
+tests/load/results
+wireframe
+*.log

@@ -1,0 +1,64 @@
+# Implantação em um servidor (VM) com Docker.
+# Para picos maiores: Postgres gerenciado, mais réplicas da API e CDN na frente (ver docs/ARQUITETURA.md).
+#   cp .env.example .env   # preencher
+#   POSTGRES_PASSWORD=... DOMAIN=live.seudominio.com.br docker compose up -d --build
+#   docker compose exec api node dist/migrate.js
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lle
+      POSTGRES_USER: lle
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+    command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=512MB"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lle -d lle"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://lle:${POSTGRES_PASSWORD}@postgres:5432/lle
+      DATABASE_SSL: "false"
+      RUN_WORKER_IN_PROCESS: "false"
+      TRUST_PROXY: "1"
+    deploy:
+      replicas: 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stop_grace_period: 20s
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ["node", "dist/worker-main.js"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://lle:${POSTGRES_PASSWORD}@postgres:5432/lle
+      DATABASE_SSL: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # HTTPS automático (Let's Encrypt) + balanceamento entre as réplicas, sem buffer para o SSE.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?defina DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [api]
+
+volumes:
+  pgdata:
+  caddy_data:

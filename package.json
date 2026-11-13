@@ -1,0 +1,29 @@
+{
+  "name": "live-limpa-estoque",
+  "private": true,
+  "description": "Sistema da Live Limpa Estoque Yamaha: loja ao vivo, vouchers, estoque, pagamentos (Mercado Pago) e relatórios.",
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:api": "npm run dev -w @lle/api",
+    "dev:worker": "npm run worker:dev -w @lle/api",
+    "dev:web": "npm run dev -w @lle/web",
+    "build": "npm run build -w @lle/web && npm run build -w @lle/api",
+    "typecheck": "npm run typecheck -w @lle/shared && npm run typecheck -w @lle/api && npm run typecheck -w @lle/web",
+    "test": "npm run test -w @lle/shared && npm run test -w @lle/api",
+    "test:concurrency": "npm run test:concurrency -w @lle/api",
+    "test:load": "npm run test:load -w @lle/api",
+    "db:migrate": "npm run db:migrate -w @lle/api",
+    "db:local": "npm run db:local -w @lle/api"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "@embedded-postgres/darwin-arm64@17.10.0-beta.17": true
+  }
+}
