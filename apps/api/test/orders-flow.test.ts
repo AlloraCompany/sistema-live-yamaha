@@ -223,6 +223,53 @@ describe('regras de liberação', () => {
     await h.ctx.db.query(`UPDATE live_settings SET status = 'ao_vivo'`);
   });
 
+  it('depois de encerrada, vende até o prazo das condições e fecha quando ele passa', async () => {
+    // Dentro do prazo: a loja continua vendendo, com o prazo no snapshot para o contador regressivo.
+    await h.ctx.db.query(`UPDATE live_settings SET status = 'encerrada', offers_until = now() + interval '2 hours'`);
+    const open = await h.snapshot();
+    expect(open.live.status).toBe('encerrada');
+    expect(open.live.salesOpen).toBe(true);
+    expect(new Date(open.live.offersUntil!).getTime()).toBeGreaterThan(Date.now());
+    expect(open.models.find((m) => m.slug === 'fazer-fz25-abs')!.purchasable).toBe(true);
+    const ok = await h.createOrder(orderInput(next()));
+    expect(ok.status).toBe(201);
+
+    // Prazo vencido: fecha na loja e na API.
+    await h.ctx.db.query(`UPDATE live_settings SET offers_until = now() - interval '1 minute'`);
+    const over = await h.snapshot();
+    expect(over.live.salesOpen).toBe(false);
+    expect(over.models.find((m) => m.slug === 'fazer-fz25-abs')!.purchasable).toBe(false);
+    const late = await h.createOrder(orderInput(next()));
+    expect(late.status).toBe(409);
+    expect(late.body.error?.code).toBe('LIVE_NOT_OPEN');
+
+    await h.ctx.db.query(`UPDATE live_settings SET status = 'ao_vivo', offers_until = NULL`);
+  });
+
+  it('guarda a cor de preferência, reserva uma unidade dessa cor quando há e usa o WhatsApp da loja escolhida', async () => {
+    const model = (await h.ctx.db.query<{ id: number }>(`SELECT id FROM models WHERE slug = 'fazer-fz25-abs'`)).rows[0]!.id;
+    const blue = (await h.ctx.db.query<{ id: number }>(`INSERT INTO units (model_id, color) VALUES ($1, 'Azul') RETURNING id`, [model])).rows[0]!.id;
+    await h.ctx.db.query(`UPDATE stores SET whatsapp = '5548911112222' WHERE id = 2`);
+
+    const res = await h.createOrder({ ...orderInput(next()), storeId: 2, color: 'azul' });
+    expect(res.status).toBe(201);
+    expect(res.body.order.preferredColor).toBe('Azul'); // grafia do cadastro da moto
+    expect(res.body.order.storeWhatsapp).toBe('5548911112222');
+    const held = await h.ctx.db.query<{ id: number }>(`SELECT u.id FROM units u JOIN orders o ON o.id = u.order_id WHERE o.code = $1`, [res.body.order.code]);
+    expect(held.rows[0]!.id).toBe(blue);
+
+    // Sem unidade livre dessa cor, a compra sai mesmo assim (a cor é preferência) com outra unidade.
+    const other = await h.createOrder({ ...orderInput(next()), color: 'Azul' });
+    expect(other.status).toBe(201);
+    expect(other.body.order.preferredColor).toBe('Azul');
+    // Loja sem WhatsApp do gerente não divulga telefone nenhum (não há WhatsApp geral nem de consultor).
+    expect(other.body.order.storeWhatsapp).toBeNull();
+
+    // Cor que a moto não tem é recusada.
+    const bad = await h.createOrder({ ...orderInput(next()), color: 'Roxa' });
+    expect(bad.status).toBe(422);
+  });
+
   it('valida CPF, WhatsApp, e-mail, endereço e aceite do termo', async () => {
     const bad = orderInput(next());
     bad.customer.cpf = '123.456.789-00';

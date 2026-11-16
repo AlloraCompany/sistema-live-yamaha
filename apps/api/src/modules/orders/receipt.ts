@@ -1,5 +1,5 @@
 import PDFDocument from 'pdfkit';
-import { formatBRL, formatBrPhone, formatDateTime, formatIsoDay, type OrderView } from '@lle/shared';
+import { formatBRL, formatBrPhone, formatDateTime, type OrderView } from '@lle/shared';
 
 const YELLOW = '#FFCE00';
 const INK = '#1B1B1B';
@@ -51,20 +51,20 @@ function drawReceipt(doc: PDFKit.PDFDocument, view: OrderView, store: Store): vo
     ['CPF', view.customer.cpfMasked],
     ['WhatsApp', formatBrPhone(view.customer.whatsapp)],
     ['Moto', view.model.name],
+    ...(view.preferredColor ? ([['Cor de preferência', view.preferredColor]] as [string, string][]) : []),
     ['Preço garantido', formatBRL(view.priceLiveCents)],
     ['Pago', `${formatBRL(view.voucherCents)} via ${view.paidWith === 'card' ? 'cartão de crédito' : 'Pix'}`],
     ['Transação Mercado Pago', view.payment ? `nº ${view.payment.id}` : '-'],
-    ['Loja de retirada', view.store.name],
-    ['Consultor', view.consultant?.name ?? 'Será definido pela equipe comercial'],
+    ['Loja de preferência', view.store.name],
+    ...(view.storeWhatsapp ? ([['WhatsApp do gerente da loja', formatBrPhone(view.storeWhatsapp)]] as [string, string][]) : []),
     ['Data', view.paidAt ? formatDateTime(view.paidAt) : '-'],
-    ['Válido até', view.validUntil ? formatIsoDay(view.validUntil) : 'Data combinada com o consultor'],
   ];
   let y = 164;
   for (const [label, value] of rows) {
     doc.moveTo(48, y - 8).lineTo(48 + width, y - 8).strokeColor('#E6E7EA').lineWidth(1).stroke();
     doc.font('Helvetica').fontSize(11).fillColor(GREY).text(label, 48, y, { width: 180 });
     doc.font('Helvetica-Bold').fillColor(INK).text(value, 230, y, { width: width - 182, align: 'right' });
-    y += 30;
+    y += 28; // 12 linhas (com a cor de preferência) precisam caber acima do rodapé
   }
 
   y += 10;
@@ -83,9 +83,9 @@ function drawReceipt(doc: PDFKit.PDFDocument, view: OrderView, store: Store): vo
   y += 84;
   doc.font('Helvetica-Bold').fontSize(13).fillColor(INK).text('O que acontece agora', 48, y);
   const steps = [
-    'Após a live, chame o consultor e mande este comprovante.',
+    `Chame o gerente da loja ${view.store.name} no WhatsApp e mande este comprovante.`,
     'Envie RG ou CNH e comprovante de renda pelo WhatsApp para a análise de crédito.',
-    `Com o crédito aprovado, o fechamento vai até ${view.validUntil ? formatIsoDay(view.validUntil) : 'a data combinada'}. A retirada na loja ${view.store.name} é combinada com o consultor.`,
+    `Com o crédito aprovado, o gerente combina com você o fechamento da compra e a retirada na loja ${view.store.name}.`,
   ];
   y += 24;
   steps.forEach((s, i) => {

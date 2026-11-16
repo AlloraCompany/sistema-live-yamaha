@@ -16,8 +16,12 @@ export const Errors = {
   notFound: (what = 'Registro') => new AppError('NOT_FOUND', `${what} não encontrado.`, 404),
   unauthorized: () => new AppError('UNAUTHORIZED', 'Faça login para continuar.', 401),
   forbidden: () => new AppError('FORBIDDEN', 'Seu perfil não tem permissão para esta ação.', 403),
-  liveNotOpen: () =>
-    new AppError('LIVE_NOT_OPEN', 'As compras abrem quando a live estiver no ar.', 409),
+  liveNotOpen: (ended = false) =>
+    new AppError(
+      'LIVE_NOT_OPEN',
+      ended ? 'A live terminou e o prazo das condições acabou.' : 'As compras abrem quando a live estiver no ar.',
+      409,
+    ),
   notReleased: () =>
     new AppError('NOT_RELEASED', 'Esta moto ainda não foi liberada na live. Fique de olho no anúncio!', 409),
   offerInactive: () => new AppError('OFFER_INACTIVE', 'Esta oferta não está mais ativa.', 409),

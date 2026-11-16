@@ -1,28 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { formatBRL, formatIsoDay, type ThermometerProgress } from '@lle/shared';
+import { formatBRL } from '@lle/shared';
 import { mountCardBrick, type CardFormData } from '../lib/mercadopago';
 
-/** Linhas de resumo do voucher (cartão "Seus dados"). */
-export function VoucherSummary({
-  modelName,
-  priceCents,
-  voucherCents,
-  validUntil,
-  thermo,
-}: {
-  modelName: string;
-  priceCents: number;
-  voucherCents: number;
-  validUntil: string | null;
-  thermo: ThermometerProgress | null;
-}) {
-  const achieved = thermo?.goals.filter((g) => g.state === 'achieved') ?? [];
-  const gifts = achieved.length
-    ? achieved.map((g) => g.prize).join(', ')
-    : thermo?.next
-      ? `Nenhum liberado ainda · ${thermo.next.prize.toLowerCase()} com ${thermo.next.threshold} motos`
-      : null;
+/** Linhas de resumo do voucher (cartão "Seus dados"): só moto, preço e valor do voucher. */
+export function VoucherSummary({ modelName, priceCents, voucherCents }: { modelName: string; priceCents: number; voucherCents: number }) {
   return (
     <div className="summary">
       <div className="row">
@@ -37,16 +19,6 @@ export function VoucherSummary({
         <span>Valor do voucher</span>
         <span>{formatBRL(voucherCents)}</span>
       </div>
-      <div className="row">
-        <span>Fechar até</span>
-        <span>{validUntil ? formatIsoDay(validUntil) : 'Combinado com o consultor'}</span>
-      </div>
-      {gifts && (
-        <div className="row">
-          <span>Brindes da live</span>
-          <span>{gifts}</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -64,7 +36,7 @@ export function MethodToggle({ value, onChange, disabled }: { value: 'pix' | 'ca
   );
 }
 
-export function TermsCheck({ checked, onChange, validUntil }: { checked: boolean; onChange: (v: boolean) => void; validUntil: string | null }) {
+export function TermsCheck({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="check">
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
@@ -73,13 +45,7 @@ export function TermsCheck({ checked, onChange, validUntil }: { checked: boolean
         <Link to="/termo-do-voucher" target="_blank" style={{ fontWeight: 700 }}>
           termo do voucher
         </Link>
-        : valor abatido da entrada, devolução integral se o crédito não for aprovado
-        {validUntil ? (
-          <>
-            , válido até <strong>{formatIsoDay(validUntil)}</strong>
-          </>
-        ) : null}
-        .
+        : valor abatido da entrada, devolução integral se o crédito não for aprovado.
       </span>
     </label>
   );
@@ -107,13 +73,24 @@ export function CardBrick({
   useEffect(() => {
     let controller: { unmount: () => void } | null = null;
     let cancelled = false;
+    let opened = false;
     mountCardBrick({
       containerId: id,
       amountCents,
       payerEmail,
       onSubmit: (d) => submitRef.current(d),
-      onReady: () => !cancelled && setStatus('ready'),
-      onError: (m) => !cancelled && setError(m),
+      onReady: () => {
+        if (cancelled) return;
+        opened = true;
+        setStatus('ready');
+      },
+      onError: (m) => {
+        if (cancelled) return;
+        if (opened) return setError(m);
+        // Erro antes de o formulário abrir: troca o carregamento por um aviso (antes ficava carregando para sempre).
+        setStatus('error');
+        setError('Não foi possível abrir o pagamento com cartão. Atualize a página ou pague com Pix.');
+      },
     })
       .then((c) => {
         if (cancelled) c.unmount();

@@ -62,6 +62,11 @@ export const paymentInputSchema = z.discriminatedUnion('method', [pixPaymentSche
 export const createOrderSchema = z.object({
   modelSlug: z.string().min(1).max(80),
   storeId: z.coerce.number().int().positive(),
+  color: z
+    .string()
+    .max(30)
+    .nullish()
+    .transform((s) => (s == null || s.trim() === '' ? null : s.trim())),
   customer: customerSchema,
   acceptTerms: z.literal(true, { errorMap: () => ({ message: 'É preciso aceitar o termo do voucher.' }) }),
   clientToken: z.string().regex(/^[A-Za-z0-9_-]{43,128}$/, 'Token do pedido inválido.'),

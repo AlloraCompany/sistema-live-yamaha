@@ -1,21 +1,21 @@
-import { formatBRL, formatIsoDay } from '@lle/shared';
+import { formatBRL } from '@lle/shared';
 import { StoreLayout } from '../components/Layout';
 import { useLive } from '../lib/live';
 
 /** Termo do voucher (texto-base para revisão jurídica; valores vêm da configuração da live). */
 export function TermsPage() {
   const { snapshot } = useLive();
-  const voucher = snapshot ? formatBRL(snapshot.live.voucherCents) : 'R$ 1.000';
-  const until = snapshot?.live.validUntil ? formatIsoDay(snapshot.live.validUntil) : 'a data informada na compra';
+  // O valor vem sempre do painel (Transmissão); enquanto carrega, a frase sai sem valor.
+  const voucher = snapshot ? ` de ${formatBRL(snapshot.live.voucherCents)}` : '';
   const hold = snapshot?.live.holdMinutes ?? 30;
   const items = [
-    `O voucher de ${voucher} garante o preço de live da moto escolhida e reserva uma unidade em nome do comprador.`,
+    `O voucher${voucher} garante o preço de live da moto escolhida e reserva uma unidade em nome do comprador.`,
     `Enquanto o Pix não é pago, a unidade fica segurada por ${hold} minutos. Sem pagamento nesse prazo, a reserva é cancelada automaticamente e a unidade volta a ficar disponível.`,
     'A reserva só é confirmada após a aprovação do pagamento pelo Mercado Pago.',
-    `O valor do voucher é abatido da entrada no fechamento da compra, que deve acontecer até ${until}.`,
-    'Se o crédito não for aprovado, o valor do voucher é devolvido integralmente, na mesma forma de pagamento.',
+    'O valor do voucher é abatido da entrada no fechamento da compra. O prazo para o fechamento é combinado com o gerente da loja, pelo WhatsApp.',
+    'Se o crédito não for aprovado, o valor do voucher é devolvido integralmente pela Geração Yamaha, via Pix.',
     'Os brindes coletivos liberados pelo termômetro da live valem para todos os compradores da live, inclusive quem comprou antes de a meta ser batida.',
-    'A data da retirada na loja escolhida é combinada com o consultor após a aprovação do crédito.',
+    'A data da retirada na loja escolhida é combinada com o gerente da loja após a aprovação do crédito.',
     'Os dados pessoais informados são usados apenas para a reserva, a análise de crédito e o contato da loja sobre esta compra, inclusive quando o pagamento não é concluído (LGPD).',
   ];
   return (

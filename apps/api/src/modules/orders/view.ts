@@ -16,6 +16,7 @@ interface Row {
   customer_cpf: string;
   customer_whatsapp: string;
   customer_email: string;
+  preferred_color: string | null;
   store_id: number;
   store_name: string;
   consultant_name: string | null;
@@ -41,19 +42,18 @@ export async function loadOrderView(db: Queryable, orderId: string): Promise<Ord
     `SELECT o.code, o.status, o.status_reason, m.slug AS model_slug, o.model_name,
             (SELECT id::text FROM model_photos ph WHERE ph.model_id = m.id ORDER BY sort, created_at LIMIT 1) AS photo_id,
             o.price_live_cents, o.voucher_amount_cents, o.valid_until,
-            o.customer_name, o.customer_cpf, o.customer_whatsapp, o.customer_email,
+            o.customer_name, o.customer_cpf, o.customer_whatsapp, o.customer_email, o.preferred_color,
             s.id AS store_id, s.name AS store_name,
             c.name AS consultant_name, c.whatsapp AS consultant_whatsapp,
             o.hold_expires_at, o.created_at, o.paid_at, o.paid_method,
             p.id::text AS pay_id, p.method AS pay_method, p.status AS pay_status, p.status_detail AS pay_status_detail,
             p.pix_qr_code, p.pix_qr_base64, p.pix_ticket_url, p.expires_at AS pay_expires_at,
-            ls.whatsapp AS store_whatsapp
+            s.whatsapp AS store_whatsapp
        FROM orders o
        JOIN models m ON m.id = o.model_id
        JOIN stores s ON s.id = o.store_id
        LEFT JOIN consultants c ON c.id = o.consultant_id
        LEFT JOIN payments p ON p.id = COALESCE(o.paid_payment_id, o.current_payment_id)
-       CROSS JOIN live_settings ls
       WHERE o.id = $1`,
     [orderId],
   );
@@ -73,6 +73,7 @@ export async function loadOrderView(db: Queryable, orderId: string): Promise<Ord
       whatsapp: r.customer_whatsapp,
       email: r.customer_email,
     },
+    preferredColor: r.preferred_color,
     store: { id: r.store_id, name: r.store_name },
     consultant: r.consultant_name ? { name: r.consultant_name, whatsapp: r.consultant_whatsapp } : null,
     holdExpiresAt: r.hold_expires_at.toISOString(),

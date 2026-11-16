@@ -56,7 +56,10 @@ describe('YouTube', () => {
     expect(youtubeLinks('https://youtu.be/dQw4w9WgXcQ')?.watchUrl).toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     expect(youtubeLinks('https://www.youtube.com/live/dQw4w9WgXcQ?si=x')?.embedUrl).toContain('dQw4w9WgXcQ');
     expect(youtubeLinks('UCabcdefghijklmnopqrstuv')?.embedUrl).toContain('live_stream?channel=UCabcdefghijklmnopqrstuv');
+    expect(youtubeLinks('youtube.com/live/oiX0yOjXZco?feature=share')?.embedUrl).toContain('/embed/oiX0yOjXZco');
+    expect(youtubeLinks('www.youtube.com/watch?v=dQw4w9WgXcQ')?.watchUrl).toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     expect(youtubeLinks('não é link')).toBeNull();
+    expect(youtubeLinks('https://exemplo.com/live/oiX0yOjXZco')).toBeNull();
   });
 });
 

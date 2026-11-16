@@ -13,8 +13,8 @@ import { BackLink, Steps, StoreLayout } from '../components/Layout';
 import { CardBrick, MethodToggle, TermsCheck, VoucherSummary } from '../components/PaymentParts';
 import { Field } from '../components/Form';
 import { OfferStrip } from '../components/OfferStrip';
-import { useLive, useThermometer } from '../lib/live';
-import { api, ApiError, newClientToken, orderTokens } from '../lib/api';
+import { useLive } from '../lib/live';
+import { api, ApiError, findPendingOrderHere, newClientToken, orderTokens } from '../lib/api';
 import type { CardFormData } from '../lib/mercadopago';
 import { NotFound } from './NotFound';
 
@@ -24,18 +24,21 @@ interface FormState {
   whatsapp: string;
   email: string;
   storeId: number;
+  color: string;
 }
 
-const EMPTY: FormState = { name: '', cpf: '', whatsapp: '', email: '', storeId: 0 };
+const EMPTY: FormState = { name: '', cpf: '', whatsapp: '', email: '', storeId: 0, color: '' };
 const DRAFT_KEY = 'lle:checkout';
 
-function validate(f: FormState): Record<string, string> {
+function validate(f: FormState, colors: string[]): Record<string, string> {
   const e: Record<string, string> = {};
   if (f.name.trim().split(/\s+/).length < 2) e['customer.name'] = 'Informe nome e sobrenome.';
   if (!isValidCpf(f.cpf)) e['customer.cpf'] = 'CPF inválido.';
   if (!normalizeBrPhone(f.whatsapp)) e['customer.whatsapp'] = 'WhatsApp inválido. Use DDD + número.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e['customer.email'] = 'E-mail inválido.';
-  if (!f.storeId) e.storeId = 'Escolha a loja de retirada.';
+  if (!f.storeId) e.storeId = 'Escolha a loja de preferência.';
+  // A cor só é perguntada quando a moto tem mais de uma opção cadastrada.
+  if (colors.length > 1 && !colors.includes(f.color)) e.color = 'Escolha a cor de preferência.';
   return e;
 }
 
@@ -43,7 +46,6 @@ export function CheckoutPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { snapshot } = useLive();
-  const thermo = useThermometer();
   const [form, setForm] = useState<FormState>(() => {
     try {
       return { ...EMPTY, ...(JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? '{}') as Partial<FormState>) };
@@ -62,12 +64,10 @@ export function CheckoutPage() {
 
   useEffect(() => sessionStorage.setItem(tokenKey, clientToken), [tokenKey, clientToken]);
   useEffect(() => {
-    const { cpf: _c, ...rest } = form; // CPF não fica salvo nem na sessão
+    // CPF não fica salvo nem na sessão; a cor depende da moto, então também não entra no rascunho.
+    const { cpf: _c, color: _k, ...rest } = form;
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(rest));
   }, [form]);
-  useEffect(() => {
-    if (!form.storeId && snapshot?.stores[0]) setForm((f) => ({ ...f, storeId: snapshot.stores[0]!.id }));
-  }, [snapshot, form.storeId]);
 
   const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     let v = e.target.value;
@@ -75,7 +75,7 @@ export function CheckoutPage() {
     if (k === 'whatsapp') v = maskPhoneInput(v);
     setForm((f) => ({ ...f, [k]: k === 'storeId' ? Number(v) : v }));
     setErrors((er) => {
-      const { [k === 'storeId' ? 'storeId' : `customer.${k}`]: _, ...rest } = er;
+      const { [k === 'storeId' || k === 'color' ? k : `customer.${k}`]: _, ...rest } = er;
       return rest;
     });
   };
@@ -89,6 +89,8 @@ export function CheckoutPage() {
     return {
       modelSlug: m!.slug,
       storeId: form.storeId,
+      // Uma cor só: vai ela, sem perguntar. Várias: a que o cliente escolheu.
+      color: m!.colors.length === 1 ? m!.colors[0]! : m!.colors.includes(form.color) ? form.color : null,
       customer: { name: form.name, cpf: form.cpf, whatsapp: form.whatsapp, email: form.email.trim() },
       acceptTerms: true,
       clientToken,
@@ -97,7 +99,7 @@ export function CheckoutPage() {
   }
 
   function check(): boolean {
-    const e = validate(form);
+    const e = validate(form, m!.colors);
     setErrors(e);
     if (Object.keys(e).length) {
       setFatal('Confira os campos destacados em "Seus dados".');
@@ -118,6 +120,15 @@ export function CheckoutPage() {
       orderTokens.set(res.order.code, clientToken);
       return res;
     } catch (err) {
+      if (err instanceof ApiError && err.code === 'PENDING_ELSEWHERE') {
+        // A reserva em andamento é deste aparelho: leva o cliente até ela, onde dá para pagar o Pix ou trocar para cartão.
+        const mine = await findPendingOrderHere(m!.slug);
+        if (mine) {
+          sessionStorage.removeItem(tokenKey);
+          navigate(`/pedido/${mine.code}`, { state: { token: mine.token } });
+          return null;
+        }
+      }
       if (err instanceof ApiError) {
         setErrors(err.fieldErrors());
         setFatal(err.message);
@@ -173,22 +184,71 @@ export function CheckoutPage() {
       <div className="two-col">
         <div className="card">
           <h2>Seus dados</h2>
-          <VoucherSummary modelName={m.name} priceCents={m.priceLiveCents ?? 0} voucherCents={voucherCents} validUntil={snapshot.live.validUntil} thermo={thermo} />
+          <VoucherSummary modelName={m.name} priceCents={m.priceLiveCents ?? 0} voucherCents={voucherCents} />
           <Field id="d-nome" label="Nome completo" placeholder="Como está no seu documento" autoComplete="name" value={form.name} onChange={set('name')} error={err('customer.name')} />
           <div className="grid-2">
             <Field id="d-cpf" label="CPF" placeholder="000.000.000-00" inputMode="numeric" value={form.cpf} onChange={set('cpf')} error={err('customer.cpf')} />
             <Field id="d-zap" label="WhatsApp" type="tel" inputMode="tel" autoComplete="tel-national" placeholder="(48) 99999-9999" value={form.whatsapp} onChange={set('whatsapp')} error={err('customer.whatsapp')} />
           </div>
           <Field id="d-email" label="E-mail (para o comprovante)" type="email" autoComplete="email" placeholder="voce@email.com" value={form.email} onChange={set('email')} error={err('customer.email')} />
-          <div className="field">
-            <label htmlFor="d-loja">Loja para retirada</label>
-            <select id="d-loja" className="input" value={form.storeId} onChange={set('storeId')}>
-              {snapshot.stores.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
+          {/* Um campo por linha: lado a lado, no celular, o nome da loja e da cor ficava cortado. */}
+          <>
+            <div className="field">
+              <label htmlFor="d-loja">Loja de preferência</label>
+              <select
+                id="d-loja"
+                className="input"
+                value={form.storeId || ''}
+                onChange={set('storeId')}
+                aria-invalid={!!err('storeId')}
+                aria-describedby={err('storeId') ? 'd-loja-err' : undefined}
+              >
+                <option value="" disabled>
+                  Escolha a loja
                 </option>
-              ))}
-            </select>
+                {snapshot.stores.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              {err('storeId') && (
+                <span id="d-loja-err" className="field__error">
+                  {err('storeId')}
+                </span>
+              )}
+            </div>
+            {m.colors.length > 1 && (
+              <div className="field">
+                <label htmlFor="d-cor">Cor de preferência</label>
+                <select
+                  id="d-cor"
+                  className="input"
+                  value={m.colors.includes(form.color) ? form.color : ''}
+                  onChange={set('color')}
+                  aria-invalid={!!err('color')}
+                  aria-describedby={err('color') ? 'd-cor-err' : undefined}
+                >
+                  <option value="" disabled>
+                    Escolha a cor
+                  </option>
+                  {m.colors.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                {err('color') && (
+                  <span id="d-cor-err" className="field__error">
+                    {err('color')}
+                  </span>
+                )}
+              </div>
+            )}
+          </>
+          <div className="small">
+            {m.colors.length > 1 ? 'A loja e a cor são a sua preferência' : 'A loja é a sua preferência'}: a equipe confirma a unidade com você no
+            fechamento.
           </div>
         </div>
 
@@ -196,7 +256,7 @@ export function CheckoutPage() {
           <h2>Pagamento</h2>
           {!canBuy && <div className="alert alert--warn">Esta moto não está disponível para compra agora.</div>}
           <MethodToggle value={method} onChange={setMethod} disabled={busy} />
-          <TermsCheck checked={terms} onChange={setTerms} validUntil={snapshot.live.validUntil} />
+          <TermsCheck checked={terms} onChange={setTerms} />
           {fatal && (
             <div className="alert alert--error" role="alert">
               {fatal}

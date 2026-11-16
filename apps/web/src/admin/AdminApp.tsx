@@ -13,7 +13,7 @@ import { GoalsSection } from './sections/GoalsSection';
 import { ModelsSection } from './sections/ModelsSection';
 import { OrdersSection } from './sections/OrdersSection';
 import { ReportSection } from './sections/ReportSection';
-import { TeamSection } from './sections/TeamSection';
+import { StoresSection } from './sections/StoresSection';
 
 function AdminHeader({ onLogout }: { onLogout?: () => void }) {
   return (
@@ -47,7 +47,7 @@ function AdminNav({ data }: { data: Dashboard | null }) {
     { id: 'motos', label: 'Motos' },
     { id: 'reservas', label: 'Reservas' },
     { id: 'relatorio', label: 'Relatório' },
-    { id: 'consultores', label: 'Consultores' },
+    { id: 'lojas', label: 'Lojas' },
   ];
   const ids = links.map((l) => l.id).join(',');
   const [active, setActive] = useState('resumo');
@@ -269,7 +269,7 @@ export default function AdminApp() {
             <ModelsSection data={data} onChange={reload} />
             <OrdersSection data={data} onChange={reload} />
             <ReportSection data={data} onChange={reload} />
-            <TeamSection data={data} onChange={reload} />
+            <StoresSection data={data} onChange={reload} />
           </>
         )}
       </main>

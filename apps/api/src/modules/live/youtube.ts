@@ -16,7 +16,8 @@ export function youtubeLinks(input: string | null): { embedUrl: string; watchUrl
   if (/^[\w-]{11}$/.test(value)) id = value;
   else {
     try {
-      const url = new URL(value);
+      // O botão "Compartilhar" de alguns aparelhos copia o link sem o "https://".
+      const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
       if (url.hostname === 'youtu.be') id = url.pathname.slice(1, 12);
       else if (/(^|\.)youtube(-nocookie)?\.com$/.test(url.hostname)) {
         id = url.searchParams.get('v') ?? url.pathname.match(/\/(?:live|embed|shorts)\/([\w-]{11})/)?.[1] ?? null;

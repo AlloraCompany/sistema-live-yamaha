@@ -11,6 +11,8 @@ import { loadOrderView } from '../modules/orders/view.js';
 import { renderReceiptsPdf } from '../modules/orders/receipt.js';
 import { buildLiveReportXlsx, validOrderIds } from '../modules/reports/live-report.js';
 import { SESSION_COOKIE } from '../modules/auth/sessions.js';
+import { youtubeLinks } from '../modules/live/youtube.js';
+import type { LiveStatus } from '@lle/shared';
 import {
   loadAdminModels,
   loadConsultants,
@@ -19,6 +21,7 @@ import {
   loadKpis,
   loadOrders,
   loadSettings,
+  loadStores,
 } from '../modules/admin/queries.js';
 
 const cents = z.coerce.number().int().min(0).max(100_000_000);
@@ -37,9 +40,14 @@ const liveSchema = z
     status: z.enum(['em_breve', 'ao_vivo', 'encerrada']),
     startsAt: z.string().datetime({ offset: true }).nullable(),
     viewers: z.coerce.number().int().min(0).max(10_000_000),
-    youtubeUrl: optionalText(300),
+    // Recusa na hora o que não vira player; antes o link era salvo e a loja ficava sem vídeo, sem aviso.
+    youtubeUrl: optionalText(300).refine(
+      (v) => v == null || youtubeLinks(v) !== null,
+      'Link do YouTube não reconhecido. Cole o link do vídeo da live ou o ID do canal.',
+    ),
     voucherCents: cents.refine((v) => v >= 100, 'Valor do voucher inválido.'),
     validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+    offersUntil: z.string().datetime({ offset: true }).nullable(),
     whatsapp: z
       .string()
       .nullable()
@@ -68,6 +76,7 @@ const LIVE_COLUMN: Record<keyof z.infer<typeof liveSchema>, string> = {
   youtubeUrl: 'youtube_url',
   voucherCents: 'voucher_amount_cents',
   validUntil: 'valid_until',
+  offersUntil: 'offers_until',
   whatsapp: 'whatsapp',
   showThermometer: 'show_thermometer',
   showLockedPrices: 'show_locked_prices',
@@ -147,6 +156,23 @@ const consultantSchema = z.object({
   active: z.boolean().default(true),
 });
 
+const storeSchema = z.object({
+  name: z.string().trim().min(2).max(60),
+  whatsapp: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((s, ctx) => {
+      if (!s || !s.trim()) return null;
+      const n = normalizeBrPhone(s);
+      if (!n) {
+        ctx.addIssue({ code: 'custom', message: 'WhatsApp da loja inválido (use DDD + número).' });
+        return z.NEVER;
+      }
+      return n;
+    }),
+});
+
 /** "2026-11-12" no fuso de Brasília, para nomes de arquivo. */
 function formatIsoDayCompact(d: Date): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d);
@@ -217,7 +243,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         loadAdminModels(db.pool),
         loadOrders(db.pool, { limit: 300 }),
         loadConsultants(db.pool),
-        db.query(`SELECT id, name FROM stores WHERE active ORDER BY sort, id`).then((r) => r.rows),
+        loadStores(db.pool),
         loadFailedJobs(db.pool),
       ]);
       return { kpis, settings, goals, models, orders, consultants, stores, failedJobs };
@@ -236,11 +262,30 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       const input = parse(liveSchema, req.body);
       const keys = Object.keys(input) as (keyof typeof input)[];
       if (keys.length === 0) throw Errors.validation('Nada para salvar.');
-      const sets = keys.map((k, i) => `${LIVE_COLUMN[k]} = $${i + 1}`);
-      const values = keys.map((k) => (k === 'testimonials' ? JSON.stringify(input[k]) : input[k]));
       await db.tx(async (tx) => {
+        const current = (
+          await tx.query<{ status: LiveStatus; youtube_url: string | null }>(
+            `SELECT status, youtube_url FROM live_settings WHERE id = 1 FOR UPDATE`,
+          )
+        ).rows[0]!;
+        // O status acompanha o link da transmissão:
+        //  - sem link, a live fica "Em breve" (não dá para colocar "Ao vivo");
+        //  - ao salvar um link novo com a live "Em breve", ela passa sozinha para "Ao vivo";
+        //  - "Encerrada" só muda por clique.
+        const url = 'youtubeUrl' in input ? (input.youtubeUrl ?? null) : current.youtube_url;
+        if (input.status === 'ao_vivo' && !url) {
+          throw Errors.validation('Cole o link da live do YouTube e salve antes de colocar "Ao vivo".');
+        }
+        const patch: typeof input = { ...input };
+        if (patch.status === undefined) {
+          if (!url && current.status === 'ao_vivo') patch.status = 'em_breve';
+          else if (url && url !== current.youtube_url && current.status === 'em_breve') patch.status = 'ao_vivo';
+        }
+        const cols = Object.keys(patch) as (keyof typeof patch)[];
+        const sets = cols.map((k, i) => `${LIVE_COLUMN[k]} = $${i + 1}`);
+        const values = cols.map((k) => (k === 'testimonials' ? JSON.stringify(patch[k]) : patch[k]));
         await tx.query(`UPDATE live_settings SET ${sets.join(', ')}, updated_at = now() WHERE id = 1`, values);
-        await audit(tx, ADMIN, 'live.updated', 'live_settings', 1, input as Record<string, unknown>);
+        await audit(tx, ADMIN, 'live.updated', 'live_settings', 1, patch as Record<string, unknown>);
       });
       return loadSettings(db.pool);
     });
@@ -253,7 +298,9 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
             WHERE id = 1 AND offline_sales + $1 >= 0 RETURNING offline_sales`,
           [delta],
         );
-        if (!rows[0]) throw new AppError('INVALID_STATE', 'Não há vendas de balcão para remover.', 409);
+        if (!rows[0]) {
+          throw new AppError('INVALID_STATE', 'O ajuste manual já está em zero: o termômetro não fica abaixo das vendas do site.', 409);
+        }
         await tx.query(`INSERT INTO offline_sale_events (delta) VALUES ($1)`, [delta]);
         await audit(tx, ADMIN, 'sales.offline', 'live_settings', 1, { delta });
         return { offlineSales: rows[0].offline_sales };
@@ -483,6 +530,19 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
            FROM waitlist w JOIN models m ON m.id = w.model_id ORDER BY w.created_at DESC LIMIT 1000`,
       );
       return rows;
+    });
+
+    /* ---------- Lojas ---------- */
+
+    // Nome e WhatsApp de cada loja: o cliente escolhe a loja de preferência no checkout e o botão do
+    // comprovante abre o WhatsApp dela.
+    app.patch('/stores/:id', async (req) => {
+      const { id } = parse(idParam, req.params);
+      const s = parse(storeSchema, req.body);
+      const res = await db.query(`UPDATE stores SET name = $2, whatsapp = $3 WHERE id = $1 AND active`, [id, s.name, s.whatsapp]);
+      if (!res.rowCount) throw Errors.notFound('Loja');
+      await audit(db.pool, ADMIN, 'store.updated', 'store', id, s);
+      return loadStores(db.pool);
     });
 
     /* ---------- Equipe ---------- */

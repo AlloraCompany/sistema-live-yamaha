@@ -37,8 +37,9 @@ export function ReportSection({ data }: SectionProps) {
         </a>
       </div>
       <div className="small">
-        A planilha traz as vendas válidas, os vouchers devolvidos e quem quase comprou (Pix gerado e não pago, cartão recusado ou pagamento
-        depois de esgotar), sem quem acabou comprando. O PDF tem um comprovante por página, na mesma ordem da aba "Vendas".
+        A aba "Vendas" cruza cliente, moto (com a cor de preferência e a cor da unidade reservada), loja de preferência, código único do voucher e
+        transação no Mercado Pago. A planilha traz também os pagamentos devolvidos automaticamente e quem quase comprou (Pix gerado e não pago, cartão
+        recusado ou pagamento depois de esgotar), sem quem acabou comprando. O PDF tem um comprovante por página, na mesma ordem da aba "Vendas".
         {!store && ' A lista de espera vai só no relatório de todas as lojas.'}
       </div>
     </section>

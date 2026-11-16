@@ -12,7 +12,7 @@ interface Row {
   description: string;
 }
 
-/** "Termômetro de metas": brindes coletivos, vendas de balcão e visibilidade na loja. */
+/** "Termômetro de metas": brindes coletivos, ajuste manual do número e visibilidade na loja. */
 export function GoalsSection({ data, onChange }: SectionProps) {
   const toRows = () => data.goals.map((g) => ({ threshold: String(g.threshold), prize: g.prize, description: g.description }));
   const [rows, setRows] = useState<Row[]>(toRows);
@@ -59,9 +59,9 @@ export function GoalsSection({ data, onChange }: SectionProps) {
           </div>
         </div>
         <div className="field">
-          <span className="field__label">Vendas fora do site (balcão, WhatsApp, telefone)</span>
+          <span className="field__label">Ajuste manual do termômetro</span>
           <Stepper
-            label="Vendas fora do site"
+            label="Ajuste manual do termômetro"
             value={kpis.offlineSales}
             disabled={busy}
             onDec={() => void run(() => adminApi.offlineSale(-1))}
@@ -70,8 +70,8 @@ export function GoalsSection({ data, onChange }: SectionProps) {
         </div>
         <div style={{ height: 48, display: 'flex', alignItems: 'center', fontSize: 14, color: 'var(--text)' }}>
           <span>
-            <strong style={{ fontWeight: 800, color: 'var(--ink)' }}>{kpis.soldInLive}</strong> no termômetro: {kpis.soldOnSite} do site + {kpis.offlineSales}{' '}
-            registradas aqui
+            <strong style={{ fontWeight: 800, color: 'var(--ink)' }}>{kpis.soldInLive}</strong> no termômetro: {kpis.soldOnSite} vendidas no site + {kpis.offlineSales}{' '}
+            de ajuste manual
             {p.next && (
               <>
                 {' '}
@@ -120,8 +120,9 @@ export function GoalsSection({ data, onChange }: SectionProps) {
       </div>
       {msg && <div className={`alert ${msg.ok ? 'alert--ok' : 'alert--error'}`}>{msg.text}</div>}
       <div className="small">
-        Clique em + a cada venda fechada fora do site: o termômetro sobe na hora para quem está assistindo. Os brindes valem para todos os compradores da
-        live, inclusive quem comprou antes de a meta ser batida.
+        O termômetro sobe sozinho a cada venda paga no site. Use + e − para ajustar o número na hora: quem está assistindo vê a mudança em seguida. O
+        ajuste não fica abaixo de zero, então o termômetro nunca mostra menos que as vendas do site. Os brindes valem para todos os compradores da live,
+        inclusive quem comprou antes de a meta ser batida.
       </div>
     </section>
   );

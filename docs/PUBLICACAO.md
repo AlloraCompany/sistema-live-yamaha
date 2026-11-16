@@ -25,7 +25,10 @@ Pré-requisito: conta no Fly.io criada pela empresa (com cartão). A ferramenta 
 4. **Segredos:**
    - `ADMIN_PASSWORD`: senha do painel, 12+ caracteres com letras e números.
    - Antes das credenciais do Mercado Pago (ensaio): `ALLOW_START_WITHOUT_PAYMENTS=true`.
-5. **Publicar:** `fly deploy`. As migrations rodam sozinhas na subida.
+5. **Publicar:** `fly deploy --ha=false` (uma máquina só; sem a opção, a primeira publicação cria duas). As
+   migrations rodam sozinhas na subida. Publicado em 16/11/2026: app `live-yamaha-geracao`, banco
+   `live-yamaha-geracao-db`. Segredo inválido (ex.: `ADMIN_PASSWORD` fora da regra) derruba o site: com uma
+   máquina não há versão anterior no ar.
 6. **Domínio:** `fly certs add live.eventosyamahageracao.com` e criar no painel do domínio o registro que o Fly
    mostrar (CNAME `live` → `live-yamaha-geracao.fly.dev`, ou A/AAAA). Plano B enquanto o DNS não propaga:
    `https://live-yamaha-geracao.fly.dev` (atualizar `PUBLIC_BASE_URL` se for usar esse endereço).
@@ -46,12 +49,13 @@ Pré-requisito: conta no Fly.io criada pela empresa (com cartão). A ferramenta 
 5. Teste real de R$ 1:
    - painel → Transmissão → valor do voucher R$ 1;
    - comprar com cartão/Pix próprio e conferir comprovante e relatório;
-   - **Devolver** pelo painel;
+   - devolver o R$ 1 pelo painel do Mercado Pago (o site não devolve voucher; o sistema recebe o aviso do estorno
+     e libera a unidade);
    - voltar o voucher para R$ 1.000.
 
 ## Terça (17/11): ensaio geral e limpeza
 
-1. Ensaio completo (liberar/bloquear, termômetro, venda de balcão, relatório), no computador e no celular
+1. Ensaio completo (liberar/bloquear, termômetro e ajuste manual, encerramento com contador, relatório), no computador e no celular
    (inclusive iPhone).
 2. **Limpar os dados do ensaio** (mantém motos, fotos, preços, estoque, metas, consultores e configurações):
    - `npm run ensaio:limpar -w @lle/api` mostra o que seria apagado;
@@ -68,7 +72,8 @@ Pré-requisito: conta no Fly.io criada pela empresa (com cartão). A ferramenta 
 
 ## Depois da live: encerramento
 
-1. Até a data limite de fechamento dos vouchers: consultores marcam **Fechado** / **Devolver**.
+1. As compras no site fecham em 19/11 às 10h (prazo das condições). A devolução de voucher é feita pela Geração,
+   por Pix, fora do site.
 2. Baixar o relatório final (planilha + PDF de comprovantes) de todas as lojas.
 3. Baixar uma cópia completa do banco (`pg_dump` do PostgreSQL 17 via `fly mpg proxy`; a ferramenta não vem com o
    Postgres local deste projeto e é instalada na hora) e guardar com a empresa.

@@ -13,6 +13,8 @@ import {
   sellHeldUnit,
 } from '../inventory/units.js';
 import { paymentOutcome, type GatewayPayment, type PaymentGateway, type PayerData } from '../payments/gateway.js';
+import type { LiveStatus } from '@lle/shared';
+import { isSalesOpen } from '../live/snapshot.js';
 import type { CreateOrderParsed, PaymentInputParsed } from './schemas.js';
 
 /** Pix no Mercado Pago precisa expirar entre 30 min e 30 dias após a criação. */
@@ -126,24 +128,38 @@ export class OrdersService {
     clientIp: string | null,
   ): Promise<{ orderId: string; created: boolean }> {
     const settings = (
-      await tx.query<{ status: string; voucher_amount_cents: number; valid_until: string | null; hold_minutes: number }>(
-        `SELECT status, voucher_amount_cents, valid_until, hold_minutes FROM live_settings WHERE id = 1`,
-      )
+      await tx.query<{
+        status: LiveStatus;
+        voucher_amount_cents: number;
+        valid_until: string | null;
+        hold_minutes: number;
+        offers_until: Date | null;
+      }>(`SELECT status, voucher_amount_cents, valid_until, hold_minutes, offers_until FROM live_settings WHERE id = 1`)
     ).rows[0]!;
-    if (settings.status !== 'ao_vivo') throw Errors.liveNotOpen();
+    // Vende com a live no ar e, depois de encerrada, até o prazo das condições.
+    if (!isSalesOpen(settings.status, settings.offers_until)) throw Errors.liveNotOpen(settings.status === 'encerrada');
 
     const model = (
-      await tx.query<{ id: number; name: string; price_live_cents: number; released_at: Date | null; offer_active: boolean }>(
-        `SELECT id, name, price_live_cents, released_at, offer_active FROM models WHERE slug = $1`,
-        [input.modelSlug],
-      )
+      await tx.query<{
+        id: number;
+        name: string;
+        price_live_cents: number;
+        released_at: Date | null;
+        offer_active: boolean;
+        colors: string[];
+      }>(`SELECT id, name, price_live_cents, released_at, offer_active, colors FROM models WHERE slug = $1`, [input.modelSlug])
     ).rows[0];
     if (!model) throw Errors.notFound('Moto');
     if (!model.released_at) throw Errors.notReleased();
     if (!model.offer_active) throw Errors.offerInactive();
 
+    // Cor de preferência: precisa ser uma das cores da moto (grava com a grafia do cadastro).
+    const wanted = input.color ?? null;
+    const color = wanted ? (model.colors.find((c) => c.toLowerCase() === wanted.toLowerCase()) ?? null) : null;
+    if (wanted && !color) throw Errors.validation('Escolha uma das cores disponíveis para esta moto.');
+
     const store = (await tx.query(`SELECT 1 FROM stores WHERE id = $1 AND active`, [input.storeId])).rows[0];
-    if (!store) throw Errors.validation('Loja de retirada inválida.');
+    if (!store) throw Errors.validation('Loja de preferência inválida.');
 
     // Serializa tentativas do MESMO CPF (várias abas/aparelhos): só a primeira chega a segurar uma moto;
     // as outras esperam milissegundos e veem a reserva já criada. CPFs diferentes não disputam este lock.
@@ -157,7 +173,7 @@ export class OrdersService {
     );
     if (pending.rowCount) throw Errors.pendingElsewhere();
 
-    const unitId = await lockAvailableUnit(tx, model.id);
+    const unitId = await lockAvailableUnit(tx, model.id, color);
     if (unitId === null) throw new NoUnitAvailable(model.id);
 
     const { customer: c } = input;
@@ -166,17 +182,17 @@ export class OrdersService {
          code, access_token_hash, model_id, unit_id, store_id, status,
          customer_name, customer_cpf, customer_whatsapp, customer_email,
          model_name, price_live_cents, voucher_amount_cents, valid_until,
-         hold_expires_at, terms_accepted_at, client_ip)
+         hold_expires_at, terms_accepted_at, client_ip, preferred_color)
        VALUES ($1, $2, $3, $4, $5, 'pending_payment',
          $6, $7, $8, $9,
          $10, $11, $12, $13,
-         now() + make_interval(mins => $14), now(), $15)
+         now() + make_interval(mins => $14), now(), $15, $16)
        RETURNING id`,
       [
         voucherCode(), tokenHash, model.id, unitId, input.storeId,
         c.name, c.cpf, c.whatsapp, c.email,
         model.name, model.price_live_cents, settings.voucher_amount_cents, settings.valid_until,
-        settings.hold_minutes, clientIp,
+        settings.hold_minutes, clientIp, color,
       ],
     );
     const orderId = rows[0]!.id;

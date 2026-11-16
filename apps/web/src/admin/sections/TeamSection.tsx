@@ -5,7 +5,12 @@ import { ApiError } from '../../lib/api';
 import { adminApi } from '../adminApi';
 import type { SectionProps } from '../AdminApp';
 
-/** Consultores: recebem os clientes da loja escolhida no checkout, em rodízio. */
+/**
+ * Consultores: recebem os clientes da loja escolhida no checkout, em rodízio.
+ *
+ * Fora do painel desde 16/11/2026: a operação decidiu divulgar um telefone só por loja, o do gerente
+ * (seção "Lojas"). O arquivo fica para o caso de o rodízio de consultores voltar a ser usado.
+ */
 export function TeamSection({ data, onChange }: SectionProps) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [c, setC] = useState({ name: '', whatsapp: '', storeId: '' });

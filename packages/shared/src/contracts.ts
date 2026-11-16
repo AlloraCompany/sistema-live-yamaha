@@ -22,6 +22,10 @@ export interface PublicLive {
   voucherCents: number;
   /** Último dia para fechar a compra (YYYY-MM-DD). */
   validUntil: string | null;
+  /** Depois de encerrada, até quando as condições da live valem no site (ISO). null = fecham no encerramento. */
+  offersUntil: string | null;
+  /** O site está aceitando compras agora (live no ar, ou encerrada dentro do prazo das condições). */
+  salesOpen: boolean;
   whatsapp: string | null;
   showThermometer: boolean;
   holdMinutes: number;
@@ -120,6 +124,8 @@ export interface OrderView {
   voucherCents: number;
   validUntil: string | null;
   customer: { name: string; cpfMasked: string; whatsapp: string; email: string };
+  /** Cor que o cliente escolheu no checkout (preferência; a unidade é confirmada pela loja). */
+  preferredColor: string | null;
   store: PublicStore;
   consultant: { name: string; whatsapp: string | null } | null;
   holdExpiresAt: string;
@@ -128,6 +134,7 @@ export interface OrderView {
   paidAt: string | null;
   paidWith: PaymentMethod | null;
   payment: PaymentView | null;
+  /** WhatsApp do gerente da loja escolhida: único telefone divulgado ao cliente. null = loja sem número. */
   storeWhatsapp: string | null;
 }
 
@@ -151,7 +158,10 @@ export type PaymentInput = CardPaymentInput | PixPaymentInput;
 
 export interface CreateOrderInput {
   modelSlug: string;
+  /** Loja de preferência do cliente. */
   storeId: number;
+  /** Cor de preferência (uma das cores da moto). */
+  color?: string | null;
   customer: { name: string; cpf: string; whatsapp: string; email: string };
   acceptTerms: true;
   /**
@@ -181,10 +191,12 @@ export interface AdminLiveSettings {
   youtubeUrl: string | null;
   voucherCents: number;
   validUntil: string | null;
+  offersUntil: string | null;
   whatsapp: string | null;
   showThermometer: boolean;
   showLockedPrices: boolean;
   holdMinutes: number;
+  /** Ajuste manual do termômetro (soma às vendas do site). */
   offlineSales: number;
   testimonials: Testimonial[];
 }
@@ -231,6 +243,7 @@ export interface AdminOrderRow {
   customerWhatsapp: string;
   customerCpfMasked: string;
   modelName: string;
+  preferredColor: string | null;
   storeName: string;
   consultantName: string | null;
   voucherCents: number;
@@ -252,6 +265,13 @@ export interface AdminKpis {
   stockAvailable: number;
   pixInProgress: number;
   viewers: number;
+}
+
+/** Loja no painel: nome e WhatsApp que aparece no comprovante do cliente. */
+export interface AdminStore {
+  id: number;
+  name: string;
+  whatsapp: string | null;
 }
 
 export interface Consultant {

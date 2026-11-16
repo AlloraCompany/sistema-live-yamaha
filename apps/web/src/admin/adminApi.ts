@@ -4,10 +4,9 @@ import type {
   AdminLiveSettings,
   AdminModel,
   AdminOrderRow,
-  AdminUnit,
+  AdminStore,
   Consultant,
   Goal,
-  PublicStore,
 } from '@lle/shared';
 import { api } from '../lib/api';
 
@@ -18,7 +17,7 @@ export interface Dashboard {
   models: AdminModel[];
   orders: AdminOrderRow[];
   consultants: Consultant[];
-  stores: PublicStore[];
+  stores: AdminStore[];
   failedJobs: AdminFailedJob[];
 }
 
@@ -36,11 +35,8 @@ export const adminApi = {
   releaseAll: (released: boolean) => api(`${base}/models/release-all`, { method: 'POST', json: { released } }),
   createModel: (m: Record<string, unknown>) => api<{ id: number }>(`${base}/models`, { method: 'POST', json: m }),
   patchModel: (id: number, m: Record<string, unknown>) => api(`${base}/models/${id}`, { method: 'PATCH', json: m }),
-  units: (id: number) => api<AdminUnit[]>(`${base}/models/${id}/units`),
-  addUnits: (id: number, body: { quantity?: number; color?: string | null; chassis?: string | null }) =>
-    api(`${base}/models/${id}/units`, { method: 'POST', json: body }),
-  removeUnit: (id: number, unitId?: number) => api(`${base}/models/${id}/units/remove`, { method: 'POST', json: unitId ? { unitId } : {} }),
-  patchUnit: (id: number, body: { color: string | null; chassis: string | null }) => api(`${base}/units/${id}`, { method: 'PATCH', json: body }),
+  addUnits: (id: number, body: { quantity?: number }) => api(`${base}/models/${id}/units`, { method: 'POST', json: body }),
+  removeUnit: (id: number) => api(`${base}/models/${id}/units/remove`, { method: 'POST', json: {} }),
   uploadPhoto: (modelId: number, file: File, color: string | null) =>
     api<{ id: string }>(`${base}/models/${modelId}/photos${color ? `?color=${encodeURIComponent(color)}` : ''}`, {
       method: 'POST',
@@ -55,6 +51,8 @@ export const adminApi = {
   completeOrder: (id: string) => api(`${base}/orders/${id}/complete`, { method: 'POST', json: {} }),
   refundOrder: (id: string, reason: string) => api(`${base}/orders/${id}/refund`, { method: 'POST', json: { reason } }),
   waitlist: () => api<{ id: number; name: string; whatsapp: string; created_at: string; model_name: string }[]>(`${base}/waitlist`),
+  patchStore: (id: number, s: { name: string; whatsapp: string | null }) =>
+    api<AdminStore[]>(`${base}/stores/${id}`, { method: 'PATCH', json: s }),
   createConsultant: (c: Omit<Consultant, 'id'>) => api<Consultant[]>(`${base}/consultants`, { method: 'POST', json: c }),
   patchConsultant: (id: number, c: Omit<Consultant, 'id'>) => api<Consultant[]>(`${base}/consultants/${id}`, { method: 'PATCH', json: c }),
   retryJob: (id: number) => api(`${base}/jobs/${id}/retry`, { method: 'POST', json: {} }),

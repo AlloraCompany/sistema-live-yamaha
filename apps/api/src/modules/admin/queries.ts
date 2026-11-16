@@ -6,6 +6,7 @@ import {
   type AdminLiveSettings,
   type AdminModel,
   type AdminOrderRow,
+  type AdminStore,
   type Consultant,
   type Goal,
 } from '@lle/shared';
@@ -23,6 +24,7 @@ export async function loadSettings(db: Queryable): Promise<AdminLiveSettings> {
     youtubeUrl: s.youtube_url,
     voucherCents: s.voucher_amount_cents,
     validUntil: s.valid_until,
+    offersUntil: s.offers_until?.toISOString() ?? null,
     whatsapp: s.whatsapp,
     showThermometer: s.show_thermometer,
     showLockedPrices: s.show_locked_prices,
@@ -87,7 +89,7 @@ export async function loadOrders(
   const digits = q?.replace(/\D/g, '');
   const { rows } = await db.query(
     `SELECT o.id, o.code, o.status, o.status_reason, o.created_at, o.paid_at, o.hold_expires_at,
-            o.customer_name, o.customer_whatsapp, o.customer_cpf, o.model_name, s.name AS store_name,
+            o.customer_name, o.customer_whatsapp, o.customer_cpf, o.model_name, o.preferred_color, s.name AS store_name,
             c.name AS consultant_name, o.voucher_amount_cents,
             p.id::text AS payment_id, p.method AS payment_method, p.status AS payment_status
        FROM orders o
@@ -113,6 +115,7 @@ export async function loadOrders(
     customerWhatsapp: r.customer_whatsapp,
     customerCpfMasked: maskCpf(r.customer_cpf),
     modelName: r.model_name,
+    preferredColor: r.preferred_color,
     storeName: r.store_name,
     consultantName: r.consultant_name,
     voucherCents: r.voucher_amount_cents,
@@ -154,6 +157,11 @@ export async function loadKpis(db: Queryable): Promise<AdminKpis> {
     pixInProgress: r.pending,
     viewers: r.viewers_display,
   };
+}
+
+export async function loadStores(db: Queryable): Promise<AdminStore[]> {
+  const { rows } = await db.query<AdminStore>(`SELECT id, name, whatsapp FROM stores WHERE active ORDER BY sort, id`);
+  return rows;
 }
 
 export async function loadConsultants(db: Queryable): Promise<Consultant[]> {

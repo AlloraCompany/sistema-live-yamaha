@@ -5,10 +5,11 @@
 - [ ] Credenciais de **produção** do Mercado Pago no ambiente; webhook de **Pagamentos** cadastrado em
       *Suas integrações* apontando para `https://SEU_DOMINIO/api/webhooks/mercadopago`; assinatura secreta em `MP_WEBHOOK_SECRET`.
 - [ ] Ensaio completo com as credenciais de teste do MP: Pix e cartão (cartões de teste), devolução de voucher, comprovante e relatório.
-- [ ] Painel → **Motos, preços e fotos**: preços, entrada/parcela, fotos por cor, ficha técnica e **unidades físicas**
-      (o estoque do site é o número de unidades cadastradas; use cor/chassi para não vender o que não existe).
-- [ ] Painel → **Transmissão**: link do YouTube, data/hora, validade do voucher, WhatsApp da loja, tempo de reserva do Pix.
-- [ ] Painel → **Termômetro**: metas e brindes. → **Consultores**: quem atende cada loja (com WhatsApp).
+- [ ] Painel → **Motos, preços e fotos**: preços, entrada/parcela, fotos por cor, ficha técnica e **unidades disponíveis**
+      (botões + e −: o site só vende até esse número). Não há cadastro de chassi: quem confere chassi e unidade é
+      o gerente, no fechamento da compra.
+- [ ] Painel → **Transmissão**: link do YouTube, data/hora, validade do voucher, tempo de reserva do Pix e até quando as condições valem depois de encerrada.
+- [ ] Painel → **Termômetro**: metas e brindes. → **Lojas**: nome e WhatsApp do gerente de cada loja (único telefone que o cliente recebe).
 - [ ] Senha do painel (`ADMIN_PASSWORD`) forte e guardada num gerenciador de senhas; trocar a senha e reiniciar a API desconecta todos os aparelhos.
 - [ ] Dados do ensaio apagados com `npm run ensaio:limpar -w @lle/api -- --confirmar` (bloqueia as motos, zera o
       termômetro e volta a live para **Em breve**; ver [PUBLICACAO.md](PUBLICACAO.md)).
@@ -18,13 +19,19 @@
 
 ## Durante a live
 
-1. Status **Ao vivo** (as compras só abrem com a live no ar).
+1. Cole o link da live do YouTube em **Transmissão** e salve: o status passa sozinho para **Ao vivo** (as compras
+   só abrem com a live no ar). Sem link, a live fica "Em breve". O sistema não sabe se o YouTube já está
+   transmitindo: ele muda quando o link é salvo.
 2. Libere cada moto com **Liberar agora** no instante do anúncio e **Bloquear** quando o apresentador passar para outra.
    Cada moto tem seu botão: dá para liberar uma e bloquear outra em sequência, sem esperar. Quem já estava pagando
    uma moto que foi bloqueada mantém a reserva até o fim do prazo do Pix.
-3. Registre vendas de balcão/WhatsApp com **+** no termômetro.
-4. **Reservas em tempo real** mostra cada voucher na hora; o consultor é atribuído automaticamente (rodízio por loja).
-5. Ao final, status **Encerrada** (fecha as compras no site; quem estiver com Pix em andamento ainda pode pagar até expirar).
+3. O termômetro sobe sozinho a cada venda paga no site. **Ajuste manual do termômetro** (+ e −) muda o número na
+   hora; o ajuste não fica abaixo de zero.
+4. **Reservas em tempo real** mostra cada voucher na hora, com a loja e a cor de preferência do cliente. O cliente
+   recebe no comprovante o WhatsApp do gerente da loja escolhida (painel → **Lojas**), o único telefone divulgado.
+5. Ao final, status **Encerrada**: a transmissão sai do ar na hora e a loja mostra o agradecimento com contador
+   regressivo. As compras continuam abertas até o horário de "condições válidas no site até" (19/11 às 10h); sem
+   esse horário, fecham ao encerrar.
 
 ## Depois da live
 
@@ -35,9 +42,10 @@
   (confira a aba "Devolvidos").
 - "Quase compraram" lista quem gerou o Pix e não pagou, teve o cartão recusado ou pagou depois de esgotar,
   sem quem acabou comprando — os consultores podem retomar o contato.
-- Consultores fecham as vendas: **Fechado** quando a moto é faturada (a nota fiscal da moto sai pelo sistema da
-  loja); **Devolver** quando o crédito não é aprovado ou o cliente desiste (estorno integral automático no Mercado
-  Pago e moto de volta ao estoque).
+- A devolução do voucher (crédito não aprovado ou desistência) **não passa pelo site**: a Geração devolve por Pix,
+  usando a planilha para cruzar cliente, moto, comprovante e código único (decisão de 16/11/2026). O painel não tem
+  botão de devolver. Continuam automáticos só os estornos de segurança: pagamento que chega depois de a moto
+  esgotar e pagamento em duplicidade.
 
 ## Monitoramento
 

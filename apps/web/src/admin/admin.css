@@ -64,8 +64,6 @@
 .filters button[aria-pressed='true'] { background: var(--ink); color: var(--yellow); border-color: var(--ink); }
 .details { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; }
 .details summary { cursor: pointer; font-weight: 700; font-size: 13px; color: var(--ink); }
-.units { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
-.unit-row { display: grid; grid-template-columns: 60px 1fr 1fr 140px 90px; gap: 8px; align-items: center; font-size: 13px; }
 .login { max-width: 420px; margin: 64px auto; width: calc(100% - 32px); }
 @media (max-width: 1279px) { .kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 @media (max-width: 1023px) {
@@ -79,7 +77,6 @@
   .release { flex-wrap: wrap; }
   .release .btn { width: 100%; }
   .model-edit { flex-direction: column; }
-  .unit-row { grid-template-columns: 50px 1fr 90px; }
 }
 
 /* Barra fixa de atalhos (fica no topo ao rolar). */

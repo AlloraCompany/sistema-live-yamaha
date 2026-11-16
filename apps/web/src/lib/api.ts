@@ -99,4 +99,31 @@ export const orderTokens = {
       /* navegação anônima sem storage: o pedido segue acessível nesta aba */
     }
   },
+  /** Pedidos feitos neste aparelho, do mais recente para o mais antigo. */
+  all(): { code: string; token: string }[] {
+    try {
+      const all = JSON.parse(localStorage.getItem(ORDER_KEY) ?? '{}') as Record<string, string>;
+      return Object.entries(all)
+        .map(([code, token]) => ({ code, token }))
+        .reverse();
+    } catch {
+      return [];
+    }
+  },
 };
+
+/**
+ * Reserva em andamento deste aparelho para a moto (quem gerou um Pix, voltou e tentou comprar de novo).
+ * Devolve o pedido para a tela continuar o pagamento nele, em vez de só avisar que já existe uma reserva.
+ */
+export async function findPendingOrderHere(modelSlug: string): Promise<{ code: string; token: string } | null> {
+  for (const { code, token } of orderTokens.all().slice(0, 5)) {
+    try {
+      const o = await api<{ status: string; model: { slug: string } }>(`/api/orders/${code}`, { orderToken: token });
+      if (o.status === 'pending_payment' && o.model.slug === modelSlug) return { code, token };
+    } catch {
+      /* pedido antigo ou inacessível: tenta o próximo */
+    }
+  }
+  return null;
+}

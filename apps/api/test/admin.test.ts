@@ -268,6 +268,71 @@ describe('painel', () => {
     expect(d.kpis.pixInProgress).toBe(rows[0]!.c);
     expect(d.models[0].stock.held).toBe(rows[0]!.c);
   });
+
+  it('status da live acompanha o link: sem link fica "Em breve", link novo coloca "Ao vivo", "Encerrada" é só por clique', async () => {
+    const { cookie } = await admin();
+    const patch = (payload: Record<string, unknown>) => h.app.inject({ method: 'PATCH', url: '/api/admin/live', headers: { cookie }, payload });
+    const status = async () => (await h.ctx.db.query<{ status: string }>(`SELECT status FROM live_settings`)).rows[0]!.status;
+    const before = (await h.ctx.db.query(`SELECT status, youtube_url FROM live_settings`)).rows[0]!;
+
+    await h.ctx.db.query(`UPDATE live_settings SET status = 'em_breve', youtube_url = NULL`);
+    // Sem link não dá para colocar "Ao vivo".
+    const noLink = await patch({ status: 'ao_vivo' });
+    expect(noLink.statusCode).toBe(422);
+    expect(await status()).toBe('em_breve');
+
+    // Salvar o link (com os outros campos do formulário) coloca a live no ar sozinha.
+    const linked = await patch({ youtubeUrl: 'youtube.com/live/oiX0yOjXZco?feature=share', viewers: 10 });
+    expect(linked.statusCode).toBe(200);
+    expect(linked.json().status).toBe('ao_vivo');
+
+    // Salvar de novo o mesmo link não mexe no status escolhido à mão.
+    expect((await patch({ status: 'em_breve' })).json().status).toBe('em_breve');
+    expect((await patch({ youtubeUrl: 'youtube.com/live/oiX0yOjXZco?feature=share', viewers: 20 })).json().status).toBe('em_breve');
+    expect((await patch({ status: 'ao_vivo' })).json().status).toBe('ao_vivo');
+
+    // Encerrar é por clique e não volta sozinho ao salvar o formulário; o prazo das condições vai para a loja.
+    const ended = await patch({ status: 'encerrada', offersUntil: '2026-11-19T10:00:00-03:00' });
+    expect(ended.json().status).toBe('encerrada');
+    expect(ended.json().offersUntil).toBe('2026-11-19T13:00:00.000Z');
+    expect((await patch({ youtubeUrl: 'https://youtu.be/dQw4w9WgXcQ' })).json().status).toBe('encerrada');
+
+    // Tirar o link com a live no ar volta para "Em breve".
+    await patch({ status: 'ao_vivo' });
+    expect((await patch({ youtubeUrl: null })).json().status).toBe('em_breve');
+
+    await h.ctx.db.query(`UPDATE live_settings SET status = $1, youtube_url = $2, offers_until = NULL`, [before.status, before.youtube_url]);
+  });
+
+  it('cada loja tem nome e WhatsApp próprios, editados pelo painel', async () => {
+    const { cookie } = await admin();
+    const ok = await h.app.inject({
+      method: 'PATCH',
+      url: '/api/admin/stores/3',
+      headers: { cookie },
+      payload: { name: 'Sul da Ilha', whatsapp: '(48) 98888-7777' },
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().find((s: { id: number }) => s.id === 3)).toMatchObject({ name: 'Sul da Ilha', whatsapp: '5548988887777' });
+    expect((await dashboard(cookie)).json().stores).toHaveLength(3);
+
+    const bad = await h.app.inject({ method: 'PATCH', url: '/api/admin/stores/3', headers: { cookie }, payload: { name: 'Sul da Ilha', whatsapp: '123' } });
+    expect(bad.statusCode).toBe(422);
+    expect((await h.app.inject({ method: 'PATCH', url: '/api/admin/stores/99', headers: { cookie }, payload: { name: 'Outra' } })).statusCode).toBe(404);
+  });
+
+  it('páginas abertas pelo endereço *.fly.dev vão para o endereço oficial; a API continua respondendo', async () => {
+    const flyHost = { host: 'live-yamaha-geracao.fly.dev' };
+    const page = await h.app.inject({ method: 'GET', url: '/painel?x=1', headers: flyHost });
+    expect(page.statusCode).toBe(302);
+    expect(page.headers.location).toBe('https://live.exemplo.test/painel?x=1');
+
+    const api = await h.app.inject({ method: 'GET', url: '/api/live/snapshot', headers: flyHost });
+    expect(api.statusCode).toBe(200);
+
+    const official = await h.app.inject({ method: 'GET', url: '/painel', headers: { host: 'live.exemplo.test' } });
+    expect(official.statusCode).not.toBe(302);
+  });
 });
 
 // Por último: estes testes encerram todas as sessões e gastam o limite de tentativas de login.

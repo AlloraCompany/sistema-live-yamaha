@@ -53,6 +53,36 @@ describe('disputa por estoque', () => {
     console.info(`[disputa] 1000 requisições simultâneas em ${elapsed} ms → ${JSON.stringify(tally)}`);
   });
 
+  it('500 compradores escolhendo cor de preferência, 6 motos (2 azuis): 6 reservas, as azuis vão para quem pediu azul', async () => {
+    const modelId = await newModel('disputa-cor', 0);
+    await h.ctx.db.query(
+      `INSERT INTO units (model_id, color) VALUES ($1, 'Preta'), ($1, 'Preta'), ($1, 'Cinza'), ($1, 'Cinza'), ($1, 'Azul'), ($1, 'Azul')`,
+      [modelId],
+    );
+    const colors = ['Preta', 'Cinza', 'Azul'];
+    const results = await Promise.all(
+      Array.from({ length: 500 }, (_, i) => h.createOrder(orderInput(++seq, { modelSlug: 'disputa-cor', color: colors[i % 3] }))),
+    );
+    const tally = codes(results);
+    expect(tally.OK).toBe(6);
+    expect(tally.ALL_ON_HOLD).toBe(494);
+    expect(tally.INTERNAL).toBeUndefined();
+
+    const { rows } = await h.ctx.db.query<{ units: number; orders: number; matched: number }>(
+      `SELECT count(DISTINCT u.id)::int AS units, count(o.id)::int AS orders,
+              count(*) FILTER (WHERE u.color = o.preferred_color)::int AS matched
+         FROM orders o JOIN units u ON u.order_id = o.id
+        WHERE o.model_id = $1`,
+      [modelId],
+    );
+    expect(rows[0]!.units).toBe(6);
+    expect(rows[0]!.orders).toBe(6);
+    // Com muito mais gente do que motos em cada cor, quase toda unidade vai para quem pediu aquela cor.
+    expect(rows[0]!.matched).toBeGreaterThanOrEqual(4);
+    await assertInvariants(h.ctx);
+    console.info(`[disputa-cor] 500 requisições → ${JSON.stringify(tally)} · unidades na cor pedida: ${rows[0]!.matched}/6`);
+  });
+
   it('o mesmo CPF em 30 abas ao mesmo tempo segura só UMA moto', async () => {
     await newModel('abas', 10);
     const base = orderInput(++seq, { modelSlug: 'abas' });

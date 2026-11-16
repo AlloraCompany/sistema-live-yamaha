@@ -11,8 +11,9 @@ kill_timeout = 30
 [env]
   NODE_ENV = "production"
   PUBLIC_BASE_URL = "https://live.eventosyamahageracao.com"
-  # O Fly fica na frente da API: 1 proxy confiável para ler o IP real do cliente.
-  TRUST_PROXY = "1"
+  # O Fly acrescenta dois endereços ao X-Forwarded-For (cliente, IP público do app). Com "1" a API enxergava
+  # o IP do próprio app para todos os visitantes e o limite por IP valia para a live inteira (visto em 16/11).
+  TRUST_PROXY = "2"
   RUN_WORKER_IN_PROCESS = "true"
   MAX_SSE_CLIENTS = "20000"
   DATABASE_POOL_MAX = "20"

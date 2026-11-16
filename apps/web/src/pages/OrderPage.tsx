@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
-import { formatBRL, formatBrPhone, formatDateTime, formatIsoDay, type CreateOrderResult, type OrderView } from '@lle/shared';
+import { formatBRL, formatBrPhone, formatDateTime, type CreateOrderResult, type OrderView } from '@lle/shared';
 import { BackLink, Steps, StoreLayout } from '../components/Layout';
 import { CardBrick, MethodToggle, VoucherSummary } from '../components/PaymentParts';
 import { IconBigCheck, IconCheck, IconCopy, IconDownload, IconShare } from '../components/Icons';
@@ -74,7 +74,6 @@ export function OrderPage() {
 }
 
 function Pending({ order, token, skewMs, onChange }: { order: OrderView; token: string; skewMs: number; onChange: (o: OrderView) => void }) {
-  const thermo = useThermometer();
   const now = useNow(1000) + skewMs;
   const toast = useToast();
   const [method, setMethod] = useState<'pix' | 'card'>(order.payment?.method === 'card' ? 'card' : 'pix');
@@ -132,7 +131,7 @@ function Pending({ order, token, skewMs, onChange }: { order: OrderView; token: 
       <div className="two-col">
         <div className="card">
           <h2>Seus dados</h2>
-          <VoucherSummary modelName={order.model.name} priceCents={order.priceLiveCents} voucherCents={order.voucherCents} validUntil={order.validUntil} thermo={thermo} />
+          <VoucherSummary modelName={order.model.name} priceCents={order.priceLiveCents} voucherCents={order.voucherCents} />
           <div className="summary">
             <div className="row">
               <span>Nome</span>
@@ -147,9 +146,15 @@ function Pending({ order, token, skewMs, onChange }: { order: OrderView; token: 
               <span>{formatBrPhone(order.customer.whatsapp)}</span>
             </div>
             <div className="row">
-              <span>Loja para retirada</span>
+              <span>Loja de preferência</span>
               <span>{order.store.name}</span>
             </div>
+            {order.preferredColor && (
+              <div className="row">
+                <span>Cor de preferência</span>
+                <span>{order.preferredColor}</span>
+              </div>
+            )}
           </div>
           <div className="small">Voucher {order.code}</div>
         </div>
@@ -214,8 +219,11 @@ function Pending({ order, token, skewMs, onChange }: { order: OrderView; token: 
 function Confirmed({ order, token }: { order: OrderView; token: string }) {
   const thermo = useThermometer();
   const toast = useToast();
-  const consultantPhone = order.consultant?.whatsapp ?? order.storeWhatsapp;
-  const waMessage = `Olá! Comprei o voucher ${order.code} da Live Limpa Estoque (${order.model.name}). Quero seguir com a análise de crédito.`;
+  // Único telefone divulgado: o do gerente da loja de preferência. Loja sem número fica sem o botão.
+  const storePhone = order.storeWhatsapp;
+  const waMessage =
+    `Acabei de garantir o meu voucher ${order.code} da Live Limpa Estoque para a ${order.model.name}` +
+    `${order.preferredColor ? `, cor de preferência ${order.preferredColor}` : ''}. Quero fechar a compra!`;
 
   async function get(path: string, name: string) {
     try {
@@ -248,12 +256,11 @@ function Confirmed({ order, token }: { order: OrderView; token: string }) {
               {[
                 ['Cliente', order.customer.name],
                 ['Moto', order.model.name],
+                ...(order.preferredColor ? [['Cor de preferência', order.preferredColor]] : []),
                 ['Preço garantido', formatBRL(order.priceLiveCents)],
                 ['Pago', `${formatBRL(order.voucherCents)} via ${order.paidWith === 'card' ? 'cartão' : 'Pix'}`],
-                ['Loja de retirada', order.store.name],
-                ['Consultor', order.consultant?.name ?? 'Definido em instantes pela equipe'],
+                ['Loja de preferência', order.store.name],
                 ['Data', order.paidAt ? formatDateTime(order.paidAt) : '-'],
-                ['Válido até', order.validUntil ? formatIsoDay(order.validUntil) : 'Combinado com o consultor'],
               ].map(([k, v]) => (
                 <div key={k} className="row">
                   <span>{k}</span>
@@ -291,11 +298,14 @@ function Confirmed({ order, token }: { order: OrderView; token: string }) {
         <div className="card">
           <h2>O que acontece agora</h2>
           {[
-            <>Após a live, chame o consultor e mande o comprovante ao lado.</>,
+            storePhone ? (
+              <>Chame o gerente da loja {order.store.name} no WhatsApp pelo botão abaixo e mande o comprovante ao lado.</>
+            ) : (
+              <>A equipe da loja {order.store.name} chama você no WhatsApp. Tenha o comprovante ao lado em mãos.</>
+            ),
             <>Envie RG ou CNH e comprovante de renda pelo WhatsApp para a análise de crédito.</>,
             <>
-              Com o crédito aprovado, o fechamento vai até <strong>{order.validUntil ? formatIsoDay(order.validUntil) : 'a data combinada'}</strong>. A
-              retirada na loja <strong>{order.store.name}</strong> é combinada com o consultor.
+              Com o crédito aprovado, o gerente combina com você o fechamento da compra e a retirada na loja <strong>{order.store.name}</strong>.
             </>,
           ].map((t, i) => (
             <div key={i} className="next-step">
@@ -320,14 +330,14 @@ function Confirmed({ order, token }: { order: OrderView; token: string }) {
               <div className="small">Quanto mais gente comprar, mais você ganha. Chame amigos para a live.</div>
             </div>
           )}
-          {consultantPhone && (
+          {storePhone && (
             <>
-              <a className="btn btn--whatsapp btn--block btn--lg" style={{ fontSize: 14 }} href={whatsappLink(consultantPhone, waMessage)} target="_blank" rel="noopener noreferrer">
+              <a className="btn btn--whatsapp btn--block btn--lg" style={{ fontSize: 14 }} href={whatsappLink(storePhone, waMessage)} target="_blank" rel="noopener noreferrer">
                 <img src="/brand/whatsapp.png" alt="" className="wa-icon" />
-                Falar com o consultor no WhatsApp
+                Falar com o gerente da loja {order.store.name}
               </a>
               <div className="small center">
-                Se o link não abrir, mande mensagem para <strong style={{ color: 'var(--ink)' }}>{formatBrPhone(consultantPhone)}</strong>.
+                Se o link não abrir, mande mensagem para <strong style={{ color: 'var(--ink)' }}>{formatBrPhone(storePhone)}</strong>.
               </div>
             </>
           )}

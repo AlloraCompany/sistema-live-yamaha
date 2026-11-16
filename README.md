@@ -123,8 +123,7 @@ npm run build
    código único do voucher e o número da transação no Mercado Pago; a nota fiscal da moto é emitida pela loja no
    faturamento, no sistema que a concessionária já usa.
 3. **Senha do painel** — `ADMIN_PASSWORD` (12+ caracteres, letras e números).
-4. **Conteúdo da live** (pelo painel): link do YouTube, data de validade do voucher, WhatsApp da loja,
-   consultores por loja, fotos/ficha das motos e estoque físico (unidades, com cor e chassi opcionais).
-5. **Jurídico** — revisar o texto do [termo do voucher](apps/web/src/pages/TermsPage.tsx) e usar apenas
-   depoimentos reais e autorizados.
+4. **Conteúdo da live** (pelo painel): link do YouTube, WhatsApp do gerente de cada loja, fotos/ficha das motos e
+   unidades disponíveis (só a quantidade; o chassi é conferido pelo gerente no fechamento).
+5. **Jurídico** — revisar o texto do [termo do voucher](apps/web/src/pages/TermsPage.tsx).
 6. **Infra** — domínio com HTTPS, PostgreSQL gerenciado com backup e réplica, CDN (opcional, recomendado).

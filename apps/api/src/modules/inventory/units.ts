@@ -10,15 +10,26 @@ import { AppError } from '../../lib/errors.js';
  * uma unidade pertence a no máximo um pedido.
  */
 
-export async function lockAvailableUnit(tx: Tx, modelId: number): Promise<number | null> {
-  const { rows } = await tx.query<{ id: number }>(
-    `SELECT id FROM units
-      WHERE model_id = $1 AND status = 'available'
-      ORDER BY id
-      LIMIT 1
-      FOR UPDATE SKIP LOCKED`,
-    [modelId],
-  );
+export async function lockAvailableUnit(tx: Tx, modelId: number, preferredColor: string | null = null): Promise<number | null> {
+  // Com cor de preferência, tenta primeiro uma unidade dessa cor; se não houver livre, vale qualquer uma
+  // (a cor é preferência do cliente, confirmada depois pela loja).
+  const { rows } = preferredColor
+    ? await tx.query<{ id: number }>(
+        `SELECT id FROM units
+          WHERE model_id = $1 AND status = 'available'
+          ORDER BY (lower(color) = lower($2)) DESC NULLS LAST, id
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED`,
+        [modelId, preferredColor],
+      )
+    : await tx.query<{ id: number }>(
+        `SELECT id FROM units
+          WHERE model_id = $1 AND status = 'available'
+          ORDER BY id
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED`,
+        [modelId],
+      );
   return rows[0]?.id ?? null;
 }
 

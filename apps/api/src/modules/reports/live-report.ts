@@ -26,6 +26,8 @@ interface OrderRow {
   customer_whatsapp: string;
   customer_email: string;
   model_name: string;
+  preferred_color: string | null;
+  unit_color: string | null;
   price_live_cents: number;
   voucher_amount_cents: number;
   paid_method: PaymentMethod | null;
@@ -58,13 +60,15 @@ async function loadScope(db: Queryable, scope: ReportScope) {
     await db.query<OrderRow>(
       `SELECT o.id, o.code, o.status, o.status_reason, o.created_at, o.paid_at,
               o.customer_name, o.customer_cpf, o.customer_whatsapp, o.customer_email,
-              o.model_name, o.price_live_cents, o.voucher_amount_cents, o.paid_method,
+              o.model_name, o.preferred_color, u.color AS unit_color,
+              o.price_live_cents, o.voucher_amount_cents, o.paid_method,
               COALESCE(o.paid_payment_id, o.current_payment_id)::text AS payment_id,
               o.store_id, s.name AS store_name, c.name AS consultant_name, cp.status_detail AS last_payment_detail,
               EXISTS (SELECT 1 FROM audit_log a
                        WHERE a.entity = 'order' AND a.entity_id = o.id::text AND a.action = 'order.late_refund') AS late_refund
          FROM orders o
          JOIN stores s ON s.id = o.store_id
+         LEFT JOIN units u ON u.id = o.unit_id
          LEFT JOIN consultants c ON c.id = o.consultant_id
          LEFT JOIN payments cp ON cp.id = o.current_payment_id
         WHERE ($1::int IS NULL OR o.store_id = $1)
@@ -114,7 +118,7 @@ export async function buildLiveReportXlsx(db: Queryable, scope: ReportScope): Pr
   if (!store) {
     summaryRows.push(['Total', valid.length, reais(valid.reduce((n, o) => n + o.voucher_amount_cents, 0)), refunded.length, almost.length]);
     const { rows } = await db.query<{ offline_sales: number }>(`SELECT offline_sales FROM live_settings WHERE id = 1`);
-    summaryRows.push(['Balcão / WhatsApp (registradas no termômetro)', rows[0]?.offline_sales ?? 0, null, null, null]);
+    summaryRows.push(['Ajuste manual do termômetro (não são vendas do site)', rows[0]?.offline_sales ?? 0, null, null, null]);
   }
 
   const models = [...new Set(orders.map((o) => o.model_name))].sort();
@@ -141,12 +145,13 @@ export async function buildLiveReportXlsx(db: Queryable, scope: ReportScope): Pr
         { header: 'WhatsApp', width: 17 },
         { header: 'E-mail', width: 30 },
         { header: 'Moto', width: 22 },
+        { header: 'Cor de preferência', width: 18 },
+        { header: 'Cor da unidade reservada', width: 22 },
         { header: 'Preço garantido', width: 16, type: 'money' },
         { header: 'Voucher pago', width: 14, type: 'money' },
         { header: 'Forma de pagamento', width: 18 },
         { header: 'Transação Mercado Pago', width: 22 },
-        { header: 'Loja', width: 16 },
-        { header: 'Consultor', width: 22 },
+        { header: 'Loja de preferência', width: 18 },
       ],
       rows: valid.map((o) => [
         o.code,
@@ -157,12 +162,13 @@ export async function buildLiveReportXlsx(db: Queryable, scope: ReportScope): Pr
         formatBrPhone(o.customer_whatsapp),
         o.customer_email,
         o.model_name,
+        o.preferred_color,
+        o.unit_color,
         reais(o.price_live_cents),
         reais(o.voucher_amount_cents),
         method(o.paid_method),
         o.payment_id,
         o.store_name,
-        o.consultant_name,
       ]),
     },
     {

@@ -20,18 +20,45 @@ Comece pelo [README.md](README.md) e por [docs/PUBLICACAO.md](docs/PUBLICACAO.md
 - **Hospedagem**: Fly.io em `gru` (São Paulo), app + Managed Postgres; domínio `live.eventosyamahageracao.com`
   (subdomínio do domínio que a empresa já tem). Conta no Fly e no Mercado Pago são criadas pela empresa, não pelo Claude.
 - Nenhum dado simulado apresentado como real. O dublê do Mercado Pago existe só nos testes.
+- Pedidos da operação em **16/11/2026**:
+  - **Status da live pelo link**: sem link do YouTube fica "Em breve"; salvar um link novo coloca "Ao vivo"
+    sozinho; "Encerrada" é só por clique. Com "Ao vivo" o vídeo começa sozinho (sem som).
+  - **Encerrada** corta a transmissão e mostra agradecimento com contador; o site continua vendendo até
+    `offers_until` (**19/11/2026 às 10h**, editável no painel).
+  - **Termômetro**: não há venda de balcão; sobe com as vendas do site e tem ajuste manual (+/−) no painel.
+  - **Checkout**: cliente escolhe loja e cor de preferência; o botão do comprovante abre o WhatsApp do **gerente
+    da loja escolhida** (painel → Lojas) com a mensagem pronta (voucher, moto, cor). É o único telefone divulgado:
+    sem WhatsApp geral e sem seção de consultores no painel (o rodízio de consultores continua no código, sem uso).
+  - **Devolução do voucher fora do site**: a Geração devolve por Pix usando a planilha. Painel sem botão
+    "Devolver". Ficam só os estornos automáticos de segurança (pagou depois de esgotar, pagamento duplicado).
+  - **Sem chassi no site**: o painel só controla a quantidade de unidades disponíveis (+/−). Chassi e conferência
+    da unidade ficam com o gerente no fechamento.
+  - **Painel só para operar a live**: sem botões "Fechado"/"Devolver" nas reservas (lista só de consulta), sem
+    "Válido para fechar até" (o gerente combina o prazo pelo WhatsApp), sem depoimentos na loja. O valor do voucher
+    vem só do painel (nenhum "R$ 1.000" fixo no código). "Espectadores exibidos" continua manual, por escolha.
+  - **Cartão**: a CSP do site libera os endereços do Mercado Pago (`*.mlstatic.com`, `*.mercadolivre.com`) e
+    scripts embutidos, exigidos pelo formulário de cartão e pelo antifraude; `script-src-attr 'none'` continua.
+  - Antes de qualquer recurso pago no Fly, avisar o valor e esperar o ok.
 
-## Estado em 13/11/2026
+## Estado em 16/11/2026
 
-- Sistema implementado e testado (typecheck, 67 testes, carga com 10 mil conexões). Ainda **não publicado**:
-  aguardando o ok da empresa para contratar Fly e Mercado Pago.
-- Motos reais e acesso ao Mercado Pago chegam **segunda, 16/11** (importar com `docs/planilha-motos.xlsx`).
+- **Publicado** no Fly em 16/11: app `live-yamaha-geracao` (1 máquina `shared-cpu-2x`/2 GB, `fly deploy --ha=false`),
+  banco `live-yamaha-geracao-db` (Managed Postgres Basic), domínio `live.eventosyamahageracao.com` (DNS na
+  Hostinger). Ainda com motos de exemplo. Mercado Pago ligado em 16/11 (aplicação "Live Limpa Estoque Yamaha", Checkout
+  Transparente, API de Payments; chaves de produção no cofre do Fly; modo ensaio desligado). Plano da
+  empresa: ficar no ar até sexta, 20/11. Senha do painel de produção em `.env.producao` (fora do git).
+- Testado: typecheck, 73 testes. O teste de carga rodou só em Mac M4; **falta rodar contra o Fly** no ensaio de
+  17/11 e decidir se a live usa máquina dedicada (cerca de US$ 3,50/dia).
+- **ATENÇÃO**: o voucher está em **R$ 1** desde 16/11 para o teste real de pagamento. **Voltar para R$ 1.000**
+  (painel → Transmissão) antes da live e conferir no ensaio de 17/11.
+- **Faltam**: motos reais (serão **21 modelos diferentes**, chegam preenchidos em 17/11; importar com `docs/planilha-motos.xlsx`), teste real do **cartão** (o Pix de R$ 1 foi aprovado de ponta a ponta em 16/11), devolver o R$ 1 pelo
+  Mercado Pago, limpar os dados do ensaio (`ensaio:limpar --confirmar --apagar-pagos`), ajustar "Espectadores
+  exibidos", WhatsApp do gerente de cada loja no painel, conferir vídeo automático no celular/iPhone.
 - Ajustes do designer feitos em 12/11: logo horizontal, cabeçalho fixo com "Voltar à live" na página da live, barra
   fixa de atalhos no painel, sem termômetro na reserva confirmada, seta própria nas listas.
-- **Para segunda com o designer e o Pedro**: depoimentos "O que dizem os clientes" (usar só reais e autorizados) e
-  cores das motos; testeira de produtos/serviços no checkout (protótipo `apps/web/src/components/OfferStrip.tsx`,
-  aparece só em `npm run dev`; recomendação: mover para depois do pagamento e gravar o interesse para o consultor);
-  quais dados das motos o painel mostra (ex.: chassi em "Reservas em tempo real").
+- **Ainda em aberto com o designer e o Pedro**: cores das motos; testeira de produtos/serviços no checkout (protótipo
+  `apps/web/src/components/OfferStrip.tsx`, aparece só em `npm run dev`; recomendação: mover para depois do
+  pagamento e gravar o interesse para o gerente). Depoimentos e chassi já foram decididos (ver acima).
 
 ## Projeto vizinho
 

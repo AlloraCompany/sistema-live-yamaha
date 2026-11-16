@@ -111,7 +111,8 @@ export async function seedLive(
 ): Promise<number> {
   const slug = opts.slug ?? 'fazer-fz25-abs';
   await ctx.db.query(
-    `UPDATE live_settings SET status = $1, valid_until = '2026-12-18', whatsapp = '5548999990000', hold_minutes = 30 WHERE id = 1`,
+    // offers_until = NULL: os testes não dependem da data em que rodam (a migration grava 19/11/2026 10h).
+    `UPDATE live_settings SET status = $1, valid_until = '2026-12-18', whatsapp = '5548999990000', hold_minutes = 30, offers_until = NULL WHERE id = 1`,
     [opts.status ?? 'ao_vivo'],
   );
   await ctx.db.query(

@@ -47,12 +47,20 @@ export async function buildServer(ctx: AppContext, hub: LiveHub) {
         objectSrc: ["'none'"],
         frameAncestors: ["'self'"],
         formAction: ["'self'"],
-        scriptSrc: ["'self'", 'https://sdk.mercadopago.com', 'https://*.mlstatic.com', 'https://*.mercadopago.com'],
+        // 'unsafe-inline': o Mercado Pago injeta o script antifraude (identificação do aparelho) como <script>
+        // embutido, com conteúdo que muda a cada sessão. Sem ele o pagamento com cartão vai sem essa
+        // identificação e tende a ser mais recusado. scriptSrcAttr 'none' mantém bloqueados os manipuladores
+        // embutidos em atributos (onerror=, onclick=); a loja não injeta HTML (sem innerHTML).
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://sdk.mercadopago.com', 'https://*.mlstatic.com', 'https://*.mercadopago.com'],
+        scriptSrcAttr: ["'none'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", 'data:', 'https://*.mlstatic.com', 'https://*.mercadopago.com', 'https://*.mercadolibre.com'],
+        // *.mercadolivre.com: imagem de controle do antifraude do Mercado Pago.
+        imgSrc: ["'self'", 'data:', 'https://*.mlstatic.com', 'https://*.mercadopago.com', 'https://*.mercadolibre.com', 'https://*.mercadolivre.com'],
         fontSrc: ["'self'", 'data:', 'https://*.mlstatic.com'],
         connectSrc: [
           "'self'",
+          // O formulário de cartão (Brick) baixa textos e componentes de *.mlstatic.com; sem isso ele não abre.
+          'https://*.mlstatic.com',
           'https://*.mercadopago.com',
           'https://*.mercadolibre.com',
           'https://*.mercadolivre.com',
@@ -102,6 +110,17 @@ export async function buildServer(ctx: AppContext, hub: LiveHub) {
     }
     req.log.error({ err }, 'erro inesperado');
     return reply.status(500).send({ error: { code: 'INTERNAL', message: 'Erro inesperado. Tente de novo em instantes.' } });
+  });
+
+  // O endereço técnico do Fly (*.fly.dev) continua respondendo depois que o domínio próprio entra no ar, e o
+  // painel recusa gravações vindas de outra origem. Quem abrir uma página por lá é levado ao endereço oficial.
+  const publicUrl = new URL(config.PUBLIC_BASE_URL);
+  app.addHook('onRequest', async (req, reply) => {
+    if (req.method !== 'GET' || req.url.startsWith('/api/')) return;
+    const host = req.hostname;
+    if (host.endsWith('.fly.dev') && host !== publicUrl.hostname) {
+      return reply.redirect(`${publicUrl.origin}${req.url}`, 302);
+    }
   });
 
   await app.register(publicRoutes);

@@ -8,8 +8,8 @@ Os dublês existem apenas nos testes; o código de produção não tem modo simu
 
 | Comando | O que cobre |
 |---|---|
-| `npm test` | 11 testes do pacote compartilhado + 48 da API (unidade, fluxos HTTP, painel, planilha das motos, limpeza do ensaio) |
-| `npm run test:concurrency` | 8 cenários de disputa e pagamentos simultâneos |
+| `npm test` | 11 testes do pacote compartilhado + 53 da API (unidade, fluxos HTTP, painel, planilha das motos, limpeza do ensaio) |
+| `npm run test:concurrency` | 9 cenários de disputa e pagamentos simultâneos (inclui 500 compradores escolhendo cor de preferência) |
 | `npm run test:load` | carga com API real em processo separado (ver abaixo) |
 
 ## Fluxos críticos (`test/orders-flow.test.ts`, `test/admin.test.ts`)

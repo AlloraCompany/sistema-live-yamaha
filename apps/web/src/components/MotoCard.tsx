@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { formatBRL, type LiveStatus, type PublicModel } from '@lle/shared';
+import { formatBRL, type PublicLive, type PublicModel } from '@lle/shared';
 import { minutesAgo } from '../lib/live';
 import { IconCheck, IconLock } from './Icons';
 
@@ -7,6 +7,11 @@ export function availabilityBadge(m: PublicModel): { label: string; tone: 'green
   if (m.available > 0) return { label: m.available === 1 ? 'Última unidade' : `${m.available} disponíveis`, tone: 'green' };
   if (m.onHold > 0) return { label: 'Todas em pagamento', tone: 'yellow' };
   return { label: 'Esgotada', tone: 'dark' };
+}
+
+/** Por que não dá para comprar agora: antes da live, ou depois do prazo das condições. */
+export function closedSalesNote(live: PublicLive): string {
+  return live.status === 'encerrada' ? 'A live terminou e o prazo das condições acabou.' : 'A compra abre quando a live estiver no ar.';
 }
 
 export function categoryLine(m: PublicModel, withColors = true): string {
@@ -20,7 +25,7 @@ export function financingLine(m: PublicModel): string | null {
 }
 
 /** Card de moto da loja: liberada (com preço e compra), bloqueada (cadeado) ou esgotada. */
-export function MotoCard({ m, liveStatus, now }: { m: PublicModel; liveStatus: LiveStatus; now: number }) {
+export function MotoCard({ m, live, now }: { m: PublicModel; live: PublicLive; now: number }) {
   const photo = m.photos[0]?.url;
   const badge = availabilityBadge(m);
   const savings = m.priceLiveCents ? m.priceTableCents - m.priceLiveCents : 0;
@@ -78,7 +83,7 @@ export function MotoCard({ m, liveStatus, now }: { m: PublicModel; liveStatus: L
         ) : (
           !m.released && <div className="fin-text">Fique na live: a compra abre assim que a moto for anunciada</div>
         )}
-        {m.released && liveStatus !== 'ao_vivo' && <div className="fin-text">A compra abre quando a live estiver no ar.</div>}
+        {m.released && !live.salesOpen && <div className="fin-text">{closedSalesNote(live)}</div>}
         {m.purchasable ? (
           <Link className="btn btn--primary btn--block" to={`/motos/${m.slug}`}>
             Ver detalhes e reservar

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
-import { formatBRL, formatInt, formatIsoDay, formatLiveStart } from '@lle/shared';
+import { formatBRL, formatDate, formatInt, formatLiveStart, formatTime } from '@lle/shared';
 import { StoreLayout } from '../components/Layout';
 import { LivePill } from '../components/SiteChrome';
 import { MotoCard } from '../components/MotoCard';
@@ -8,19 +8,74 @@ import { Thermometer } from '../components/Thermometer';
 import { IconEye, IconExternal, IconGift, IconLive, IconPlay } from '../components/Icons';
 import { minutesAgo, useLive, useNow, useThermometer } from '../lib/live';
 
+/** "19/11 às 10h" (10h30 quando há minutos), no horário de Brasília. */
+function formatDeadline(iso: string): string {
+  const [h, m] = formatTime(iso).split(':');
+  return `${formatDate(iso).slice(0, 5)} às ${Number(h)}h${m === '00' ? '' : m}`;
+}
+
+/** Tela de encerramento: a transmissão sai do ar e fica o agradecimento, com o prazo das condições. */
+function Closing({ offersUntil }: { offersUntil: string | null }) {
+  const now = useNow(1000);
+  const left = offersUntil ? Math.max(0, new Date(offersUntil).getTime() - now) : 0;
+  const parts: [string, number][] = [
+    ['dias', Math.floor(left / 86_400_000)],
+    ['horas', Math.floor((left % 86_400_000) / 3_600_000)],
+    ['min', Math.floor((left % 3_600_000) / 60_000)],
+    ['seg', Math.floor((left % 60_000) / 1000)],
+  ];
+  return (
+    <div className="closing">
+      <div className="closing__title">Obrigado por assistir!</div>
+      {offersUntil && left > 0 ? (
+        <>
+          <p className="closing__text">
+            A live terminou, mas as condições continuam válidas <strong>neste site até {formatDeadline(offersUntil)}</strong>.
+          </p>
+          <div className="closing__timer" role="timer" aria-label="Tempo restante das condições da live">
+            {parts.map(([label, value]) => (
+              <span key={label} className="closing__unit">
+                <strong>{String(value).padStart(2, '0')}</strong>
+                {label}
+              </span>
+            ))}
+          </div>
+          <a className="btn btn--primary btn--sm" href="#motos">
+            Ver as motos
+          </a>
+        </>
+      ) : (
+        <p className="closing__text">A live terminou e o prazo das condições acabou. Até a próxima!</p>
+      )}
+    </div>
+  );
+}
+
 function Player() {
   const { snapshot } = useLive();
   const [playing, setPlaying] = useState(false);
   const live = snapshot?.live;
   const embed = live?.youtubeEmbedUrl;
+  // Encerrada: corta a transmissão na hora (mesmo para quem já estava assistindo).
+  if (live?.status === 'encerrada') {
+    return (
+      <div className="player player--closed">
+        <Closing offersUntil={live.offersUntil} />
+      </div>
+    );
+  }
+  // Com a live "Ao vivo" o vídeo começa sozinho (sem som: os navegadores só deixam tocar automático no mudo).
+  // Antes e depois da live o player continua "leve": o iframe do YouTube só carrega no clique.
+  const show = Boolean(embed) && (playing || live?.status === 'ao_vivo');
   return (
     <div className="player">
-      {/* Player "leve": o iframe do YouTube só carrega no clique (página abre rápido mesmo com milhares de pessoas). */}
-      {playing && embed ? (
+      {show && embed ? (
         <iframe
           src={embed}
           title="Transmissão da Live Limpa Estoque Yamaha"
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          // O site envia "Referrer-Policy: no-referrer"; sem informar a origem, o YouTube recusa o player (erro 153).
+          referrerPolicy="strict-origin-when-cross-origin"
           allowFullScreen
         />
       ) : (
@@ -32,11 +87,7 @@ function Player() {
             <IconPlay />
           </button>
           <div className="player__note">
-            {!embed
-              ? live?.status === 'encerrada'
-                ? 'A live terminou. Obrigado por assistir!'
-                : 'A transmissão aparece aqui quando a live começar.'
-              : 'Toque para assistir à transmissão ao vivo'}
+            {!embed ? 'A transmissão aparece aqui quando a live começar.' : 'Toque para assistir à transmissão ao vivo'}
           </div>
         </>
       )}
@@ -84,7 +135,7 @@ function SoldBanner() {
 function VoucherCard() {
   const { snapshot } = useLive();
   if (!snapshot) return null;
-  const { voucherCents, validUntil } = snapshot.live;
+  const { voucherCents } = snapshot.live;
   return (
     <div className="voucher-card">
       <div className="voucher-card__value">
@@ -94,7 +145,7 @@ function VoucherCard() {
       <div className="voucher-card__body">
         <p>
           Garante o preço da live. Pago via Pix ou cartão e abatido da entrada no fechamento. Devolvido integralmente se o crédito não for
-          aprovado.{validUntil && <> Válido até <strong style={{ fontWeight: 800 }}>{formatIsoDay(validUntil)}</strong>.</>}
+          aprovado.
         </p>
         <div className="voucher-card__gift">
           <IconGift />
@@ -107,9 +158,9 @@ function VoucherCard() {
 
 const HOW = (holdMinutes: number) => [
   ['Acompanhe a live', 'As motos aparecem bloqueadas e são liberadas uma a uma conforme o apresentador anuncia. Enquanto espera, veja fotos, cores e ficha técnica.'],
-  ['Pague o voucher', `Pix ou cartão. Enquanto o Pix não é pago, a unidade fica segurada para você por ${holdMinutes} minutos. Com o pagamento confirmado, ela fica reservada no seu nome até a data de fechamento.`],
-  ['Feche com o consultor', 'Alguém da equipe comercial fala com você pelo WhatsApp em até 1 hora durante a live, ou no próximo horário comercial, para a análise de crédito.'],
-  ['Retire na loja', 'Via Expressa, Centro ou Sul da Ilha, com o voucher abatido da entrada. A data da retirada é combinada com o consultor depois da aprovação do crédito.'],
+  ['Pague o voucher', `Pix ou cartão. Enquanto o Pix não é pago, a unidade fica segurada para você por ${holdMinutes} minutos. Com o pagamento confirmado, ela fica reservada no seu nome.`],
+  ['Feche com o gerente', 'Com o voucher pago, o comprovante traz o botão do WhatsApp do gerente da loja que você escolheu. É com ele a análise de crédito e o fechamento da compra.'],
+  ['Retire na loja', 'Via Expressa, Centro ou Sul da Ilha, com o voucher abatido da entrada. A data da retirada é combinada com o gerente depois da aprovação do crédito.'],
 ];
 
 export function StorePage() {
@@ -172,7 +223,8 @@ export function StorePage() {
           Live Limpa Estoque <span className="hl">Yamaha</span>
         </h1>
         <p className="hero__lead">
-          Preço de live, estoque limitado e voucher de {live ? formatBRL(live.voucherCents) : 'R$ 1.000'} abatido da entrada.
+          {/* O valor vem sempre do painel (Transmissão); enquanto carrega, a frase sai sem valor. */}
+          Preço de live, estoque limitado e voucher{live ? ` de ${formatBRL(live.voucherCents)}` : ''} abatido da entrada.
         </p>
       </div>
 
@@ -180,12 +232,16 @@ export function StorePage() {
         <Player />
       </div>
       <div className="viewers">
-        <span className="viewers__count">
-          <IconEye />
-          <span>
-            <strong>{formatInt(live?.viewers ?? 0)}</strong> assistindo agora
+        {live?.status === 'encerrada' ? (
+          <span className="viewers__count">Transmissão encerrada</span>
+        ) : (
+          <span className="viewers__count">
+            <IconEye />
+            <span>
+              <strong>{formatInt(live?.viewers ?? 0)}</strong> assistindo agora
+            </span>
           </span>
-        </span>
+        )}
         {live?.youtubeUrl && (
           <a href={live.youtubeUrl} target="_blank" rel="noopener noreferrer">
             Abrir no YouTube
@@ -221,7 +277,7 @@ export function StorePage() {
       {error && <div className="empty">Não foi possível carregar as motos. Atualize a página em instantes.</div>}
       {snapshot && models.length === 0 && <div className="empty">As motos da live aparecem aqui em breve.</div>}
       <div className="grid-motos">
-        {live && models.map((m) => <MotoCard key={m.id} m={m} liveStatus={live.status} now={now} />)}
+        {live && models.map((m) => <MotoCard key={m.id} m={m} live={live} now={now} />)}
       </div>
 
       <section id="como-funciona" className="how">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AdminModel, AdminUnit, Spec } from '@lle/shared';
+import type { AdminModel, Spec } from '@lle/shared';
 import { Field, Stepper, Switch } from '../../components/Form';
 import { IconPhoto, IconTrash } from '../../components/Icons';
 import { ApiError } from '../../lib/api';
@@ -55,55 +55,8 @@ function payloadOf(d: Draft) {
   };
 }
 
-function Units({ model }: { model: AdminModel }) {
-  const [units, setUnits] = useState<AdminUnit[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const load = () => adminApi.units(model.id).then(setUnits).catch(() => setError('Falha ao carregar unidades.'));
-  return (
-    <details className="details" onToggle={(e) => (e.currentTarget.open && !units ? void load() : undefined)}>
-      <summary>Unidades físicas (cor e chassi)</summary>
-      {error && <div className="alert alert--error">{error}</div>}
-      <div className="units">
-        {units?.map((u) => (
-          <UnitRow key={u.id} unit={u} onSaved={load} />
-        ))}
-        {units?.length === 0 && <div className="small">Nenhuma unidade cadastrada.</div>}
-      </div>
-    </details>
-  );
-}
-
-function UnitRow({ unit, onSaved }: { unit: AdminUnit; onSaved: () => void }) {
-  const [color, setColor] = useState(unit.color ?? '');
-  const [chassis, setChassis] = useState(unit.chassis ?? '');
-  const [msg, setMsg] = useState<string | null>(null);
-  const label = { available: 'Livre', held: `Em pagamento ${unit.orderCode ?? ''}`, sold: `Vendida ${unit.orderCode ?? ''}`, removed: 'Retirada' }[unit.status];
-  return (
-    <div className="unit-row">
-      <span className="small">#{unit.id}</span>
-      <input className="input input--sm" aria-label="Cor" placeholder="Cor" value={color} onChange={(e) => setColor(e.target.value)} />
-      <input className="input input--sm desktop-only" aria-label="Chassi" placeholder="Chassi" value={chassis} onChange={(e) => setChassis(e.target.value)} />
-      <span className={`badge ${unit.status === 'available' ? 'badge--green' : unit.status === 'held' ? 'badge--yellow' : 'badge--blue'}`}>{label}</span>
-      <button
-        type="button"
-        className="btn btn--soft btn--sm"
-       
-        onClick={async () => {
-          try {
-            await adminApi.patchUnit(unit.id, { color: color || null, chassis: chassis || null });
-            setMsg('ok');
-            onSaved();
-          } catch (err) {
-            setMsg(err instanceof ApiError ? err.message : 'erro');
-          }
-        }}
-      >
-        {msg === 'ok' ? 'Salvo' : 'Salvar'}
-      </button>
-      {msg && msg !== 'ok' && <span className="field__error" style={{ gridColumn: '1 / -1' }}>{msg}</span>}
-    </div>
-  );
-}
+// Sem cadastro de chassi nem de unidade por unidade (decisão de 16/11/2026): o painel só controla quantas
+// unidades estão disponíveis. Chassi e conferência da moto ficam com o gerente, no fechamento da compra.
 
 function ModelEditor({ model, onChange }: { model?: AdminModel; onChange: () => Promise<void> }) {
   const [d, setD] = useState<Draft>(() => draftOf(model));
@@ -155,9 +108,9 @@ function ModelEditor({ model, onChange }: { model?: AdminModel; onChange: () => 
           <Field id={`f-${id}`} label="Preço de tabela (R$)" inputMode="decimal" value={d.priceTable} onChange={set('priceTable')} />
           {model && (
             <div className="field">
-              <span className="field__label">Estoque livre</span>
+              <span className="field__label">Unidades disponíveis</span>
               <Stepper
-                label={`Estoque de ${model.name}`}
+                label={`Unidades disponíveis de ${model.name}`}
                 value={model.stock.available}
                 disabled={busy}
                 onDec={() => void run(() => adminApi.removeUnit(model.id))}
@@ -257,7 +210,6 @@ function ModelEditor({ model, onChange }: { model?: AdminModel; onChange: () => 
             </>
           </div>
         )}
-        {model && <Units model={model} />}
         {msg && <div className={`alert ${msg.ok ? 'alert--ok' : 'alert--error'}`}>{msg.text}</div>}
         <div>
           <button
@@ -271,7 +223,7 @@ function ModelEditor({ model, onChange }: { model?: AdminModel; onChange: () => 
                   await adminApi.createModel(payloadOf(d));
                   setD(draftOf());
                 }
-              }, model ? 'Alterações salvas: a loja já mostra os novos dados.' : 'Moto cadastrada (bloqueada). Adicione fotos e unidades.')
+              }, model ? 'Alterações salvas: a loja já mostra os novos dados.' : 'Moto cadastrada (bloqueada). Adicione as fotos e use + para informar as unidades disponíveis.')
             }
           >
             {model ? 'Salvar alterações' : 'Cadastrar moto'}

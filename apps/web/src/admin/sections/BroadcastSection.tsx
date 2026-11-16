@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
-import { formatBrPhone, type LiveStatus, type Testimonial } from '@lle/shared';
+import { useState } from 'react';
+import { formatDateTime, type LiveStatus } from '@lle/shared';
 import { Field } from '../../components/Form';
-import { IconTrash } from '../../components/Icons';
 import { ApiError } from '../../lib/api';
 import { adminApi } from '../adminApi';
 import type { SectionProps } from '../AdminApp';
@@ -26,7 +25,6 @@ function fromLocalInput(v: string): string | null {
 export function BroadcastSection({ data, onChange }: SectionProps) {
   const s = data.settings;
   const [form, setForm] = useState(() => init());
-  const [testimonials, setTestimonials] = useState<Testimonial[]>(s.testimonials);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -36,13 +34,10 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
       viewers: String(s.viewers),
       youtubeUrl: s.youtubeUrl ?? '',
       voucher: String(s.voucherCents / 100),
-      validUntil: s.validUntil ?? '',
-      whatsapp: s.whatsapp ? formatBrPhone(s.whatsapp) : '',
+      offersUntil: toLocalInput(s.offersUntil),
       holdMinutes: String(s.holdMinutes),
     };
   }
-  useEffect(() => setTestimonials(s.testimonials), [s.testimonials]);
-
   async function save(patch: Parameters<typeof adminApi.patchLive>[0], okText: string) {
     setBusy(true);
     setMsg(null);
@@ -76,7 +71,15 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
                 aria-pressed={s.status === value}
                 disabled={busy}
                 onClick={() => {
-                  if (value === 'encerrada' && !confirm('Encerrar a live? As compras no site fecham na hora.')) return;
+                  if (
+                    value === 'encerrada' &&
+                    !confirm(
+                      s.offersUntil
+                        ? `Encerrar a live? A transmissão sai do ar na hora e a loja mostra o agradecimento. As compras continuam abertas até ${formatDateTime(s.offersUntil)}.`
+                        : 'Encerrar a live? A transmissão sai do ar e as compras no site fecham na hora.',
+                    )
+                  )
+                    return;
                   void save({ status: value }, `Status alterado para "${label}".`);
                 }}
               >
@@ -84,6 +87,9 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
               </button>
             ))}
           </div>
+          <span className="field__hint">
+            Sem link do YouTube a live fica "Em breve". Ao salvar o link, ela passa sozinha para "Ao vivo". "Encerrada" é só por clique.
+          </span>
         </div>
         <Field id="p-date" label="Data e hora" type="datetime-local" value={form.startsAt} onChange={set('startsAt')} />
         <Field id="p-view" label="Espectadores exibidos" inputMode="numeric" value={form.viewers} onChange={set('viewers')} />
@@ -100,8 +106,6 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
           />
         </div>
         <Field id="p-vou" label="Valor do voucher (R$)" inputMode="decimal" value={form.voucher} onChange={set('voucher')} />
-        <Field id="p-until" label="Válido para fechar até" type="date" value={form.validUntil} onChange={set('validUntil')} />
-        <Field id="p-wa" label="WhatsApp da loja (DDD+número)" type="tel" placeholder="(48) 99999-9999" value={form.whatsapp} onChange={set('whatsapp')} />
         <Field
           id="p-hold"
           label="Reserva do Pix (minutos)"
@@ -111,28 +115,17 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
          
           hint="Tempo que a moto fica segurada esperando o Pix"
         />
-      </div>
-      <details className="details">
-        <summary>Depoimentos de clientes ({testimonials.length})</summary>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
-          {testimonials.map((t, i) => (
-            <div key={i} className="grid-4" style={{ gridTemplateColumns: '1fr 1fr 2fr 44px' }}>
-              <input className="input input--sm" aria-label="Nome" value={t.name} onChange={(e) => setTestimonials((l) => l.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-              <input className="input input--sm" aria-label="Quando comprou" value={t.when} onChange={(e) => setTestimonials((l) => l.map((x, j) => (j === i ? { ...x, when: e.target.value } : x)))} />
-              <input className="input input--sm" aria-label="Depoimento" value={t.text} onChange={(e) => setTestimonials((l) => l.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))} />
-              <button type="button" className="icon-btn" aria-label="Remover depoimento" onClick={() => setTestimonials((l) => l.filter((_, j) => j !== i))}>
-                <IconTrash />
-              </button>
-            </div>
-          ))}
-          <div>
-            <button type="button" className="btn btn--soft btn--sm" onClick={() => setTestimonials((l) => [...l, { name: '', when: '', text: '' }])}>
-              Adicionar depoimento
-            </button>
-          </div>
-          <div className="small">Use apenas depoimentos reais, com autorização do cliente. Sem depoimentos, o bloco não aparece na loja.</div>
+        <div className="span-all">
+          <Field
+            id="p-offers"
+            label="Depois de encerrada, condições válidas no site até"
+            type="datetime-local"
+            value={form.offersUntil}
+            onChange={set('offersUntil')}
+            hint="A loja mostra o agradecimento com contador regressivo e continua vendendo até este horário. Vazio = as compras fecham ao encerrar."
+          />
         </div>
-      </details>
+      </div>
       {msg && <div className={`alert ${msg.ok ? 'alert--ok' : 'alert--error'}`}>{msg.text}</div>}
       <div>
         <button
@@ -146,10 +139,12 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
                 viewers: Number(form.viewers.replace(/\D/g, '')) || 0,
                 youtubeUrl: form.youtubeUrl || null,
                 voucherCents: Math.round(Number(form.voucher.replace(/\./g, '').replace(',', '.')) * 100),
-                validUntil: form.validUntil || null,
-                whatsapp: form.whatsapp || null,
+                // Sem prazo de fechamento no site: o gerente combina com o cliente pelo WhatsApp.
+                validUntil: null,
+                offersUntil: fromLocalInput(form.offersUntil),
                 holdMinutes: Number(form.holdMinutes) || 30,
-                testimonials: testimonials.filter((t) => t.name.trim() && t.text.trim()),
+                // Sem depoimentos na loja (decisão de 16/11/2026): garante a lista vazia.
+                testimonials: [],
               },
               'Transmissão salva. A loja já mostra as mudanças.',
             )

@@ -9,6 +9,7 @@ interface SettingsRow {
   youtube_url: string | null;
   voucher_amount_cents: number;
   valid_until: string | null;
+  offers_until: Date | null;
   whatsapp: string | null;
   show_thermometer: boolean;
   show_locked_prices: boolean;
@@ -36,6 +37,15 @@ interface ModelRow {
   available: number;
   held: number;
   photos: { id: string; color: string | null }[];
+}
+
+/**
+ * O site aceita compras com a live no ar e, depois de encerrada, até o prazo das condições (`offers_until`).
+ * Sem prazo configurado, as compras fecham no encerramento.
+ */
+export function isSalesOpen(status: LiveStatus, offersUntil: Date | null, now = Date.now()): boolean {
+  if (status === 'ao_vivo') return true;
+  return status === 'encerrada' && offersUntil !== null && offersUntil.getTime() > now;
 }
 
 /**
@@ -78,7 +88,9 @@ export async function buildSnapshot(db: Queryable, version: number): Promise<Liv
 
   const s = settingsRes.rows[0]!;
   const yt = youtubeLinks(s.youtube_url);
-  const lastRecent = recentRes.rows[0]?.at ?? null; // inclui vendas de balcão da última hora
+  // Compras abertas: live no ar, ou encerrada ainda dentro do prazo das condições (ver salesOpen em service.ts).
+  const salesOpen = isSalesOpen(s.status, s.offers_until);
+  const lastRecent = recentRes.rows[0]?.at ?? null; // inclui os ajustes manuais (+1) da última hora
   const lastPaid = salesRes.rows[0]!.last_paid;
   const lastSaleAt = [lastPaid, lastRecent].filter((d): d is Date => !!d).sort((a, b) => +b - +a)[0] ?? null;
 
@@ -104,7 +116,7 @@ export async function buildSnapshot(db: Queryable, version: number): Promise<Liv
       releasedAt: m.released_at?.toISOString() ?? null,
       available: m.available,
       onHold: m.held,
-      purchasable: released && m.offer_active && s.status === 'ao_vivo' && m.available > 0,
+      purchasable: released && m.offer_active && salesOpen && m.available > 0,
     };
   });
 
@@ -119,6 +131,8 @@ export async function buildSnapshot(db: Queryable, version: number): Promise<Liv
       youtubeUrl: yt?.watchUrl ?? null,
       voucherCents: s.voucher_amount_cents,
       validUntil: s.valid_until,
+      offersUntil: s.offers_until?.toISOString() ?? null,
+      salesOpen,
       whatsapp: s.whatsapp,
       showThermometer: s.show_thermometer,
       holdMinutes: s.hold_minutes,

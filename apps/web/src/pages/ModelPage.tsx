@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { formatBRL, maskPhoneInput, type PublicModel } from '@lle/shared';
 import { BackLink, Steps, StoreLayout } from '../components/Layout';
-import { availabilityBadge, financingLine } from '../components/MotoCard';
+import { availabilityBadge, closedSalesNote, financingLine } from '../components/MotoCard';
 import { IconLock } from '../components/Icons';
 import { useLive, useThermometer } from '../lib/live';
 import { api, ApiError } from '../lib/api';
@@ -178,8 +178,8 @@ export function ModelPage() {
             </>
           ) : !m.released ? (
             <div className="alert alert--info">Fique na live: a compra abre assim que a moto for anunciada.</div>
-          ) : snapshot.live.status !== 'ao_vivo' ? (
-            <div className="alert alert--info">A compra abre quando a live estiver no ar.</div>
+          ) : !snapshot.live.salesOpen ? (
+            <div className="alert alert--info">{closedSalesNote(snapshot.live)}</div>
           ) : m.onHold > 0 ? (
             <div className="alert alert--warn">
               Todas as unidades estão seguradas para clientes pagando agora. Se algum Pix não for pago, a moto volta em minutos — esta página
@@ -205,28 +205,6 @@ export function ModelPage() {
         </div>
       </div>
 
-      {snapshot.live.testimonials.length > 0 && (
-        <section className="testimonials">
-          <div>
-            <h2 className="display">O que dizem os clientes</h2>
-            <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text)' }}>Depoimentos de quem comprou na Geração Yamaha</p>
-          </div>
-          <div className="testimonials__grid">
-            {snapshot.live.testimonials.map((t) => (
-              <div key={t.name + t.text} className="testimonial">
-                <div className="testimonial__who">
-                  <span className="testimonial__avatar">{t.name.slice(0, 1).toUpperCase()}</span>
-                  <div>
-                    <div className="testimonial__name">{t.name}</div>
-                    <div className="testimonial__when">{t.when}</div>
-                  </div>
-                </div>
-                <div className="testimonial__text">{t.text}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </StoreLayout>
   );
 }
