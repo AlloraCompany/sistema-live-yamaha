@@ -98,7 +98,8 @@ Comece pelo [README.md](README.md) e por [docs/PUBLICACAO.md](docs/PUBLICACAO.md
   `.data/motos-de-exemplo-apagadas-2026-11-17.json`).
 - **Publicado em 17/11 (versões 33 a 36)**: termômetro cinza alinhado ao vídeo, moto em destaque, bloco único "Motos da live" com estoque total, loja sem
   entrada/parcelas (cópia dos dados de antes em `.data/copia-producao-2026-11-17-antes-da-reserva.json`).
-  Nada disso foi enviado ao git ainda. Publicar sempre com o ok da operação (a trava do Claude barra sem ele).
+  Tudo enviado ao git em 17/11 à noite (commit 2f88a06; a pasta `.claude/` fica de fora, é configuração local).
+  Publicar sempre com o ok da operação (a trava do Claude barra sem ele).
 - **Fotos das motos gravadas em 17/11**: 50 fotos das 24 motos, uma por cor (JPEG oficial "3/4 direita" da
   galeria de mídia da Yamaha, recortado e convertido para WebP; a operação preferiu JPEG ao PNG por ser mais leve).
   Cópias em `.data/fotos-motos/` (fora do git), com a origem de cada uma em `origem-das-fotos.tsv`. Gravadas
