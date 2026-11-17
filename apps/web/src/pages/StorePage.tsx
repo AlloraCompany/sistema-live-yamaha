@@ -227,10 +227,6 @@ export function StorePage() {
         <h1 className="display hero__title">
           Live Limpa Estoque <span className="hl">Yamaha</span>
         </h1>
-        <p className="hero__lead">
-          {/* O valor vem sempre do painel (Transmissão); enquanto carrega, a frase sai sem valor. */}
-          Preço de live, estoque limitado e voucher{live ? ` de ${formatBRL(live.voucherCents)}` : ''} abatido da entrada.
-        </p>
       </div>
 
       <div ref={playerBox}>

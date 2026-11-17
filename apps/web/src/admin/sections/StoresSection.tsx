@@ -78,7 +78,6 @@ export function StoresSection({ data, onChange }: SectionProps) {
     <section className="panel" id="lojas">
       <div className="panel__head">
         <h2>Lojas</h2>
-        <span>O cliente escolhe a loja de preferência no checkout; o botão do comprovante abre o WhatsApp do gerente dela</span>
       </div>
       {msg && <div className={`alert ${msg.ok ? 'alert--ok' : 'alert--error'}`}>{msg.text}</div>}
       <div className="table-wrap">
@@ -152,11 +151,6 @@ export function StoresSection({ data, onChange }: SectionProps) {
             </tr>
           </tbody>
         </table>
-      </div>
-      <div className="small">
-        As lojas aparecem no checkout em ordem alfabética. Dois gerentes não precisam de lojas separadas: a mesma pessoa pode ter o número em mais
-        de uma loja. Este é o único telefone que o cliente recebe. Loja sem número cadastrado fica sem o botão do WhatsApp no comprovante. A mensagem já vai
-        escrita: "Acabei de garantir o meu voucher … para a [moto], cor de preferência [cor]. Quero fechar a compra!".
       </div>
     </section>
   );
