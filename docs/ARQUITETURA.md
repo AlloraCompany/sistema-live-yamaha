@@ -31,7 +31,7 @@ O valor é abatido da entrada no fechamento com o consultor ou devolvido se o cr
 
 | Estado do pedido | Unidade física | Quando |
 |---|---|---|
-| `pending_payment` | `held` (segurada) | Pedido criado; Pix/cartão em andamento. Expira em `hold_minutes` (30 min). |
+| `pending_payment` | `held` (segurada) | Pedido criado; Pix/cartão em andamento. Expira em `hold_minutes` (fixo em 15 min desde 17/11/2026; o Pix no MP vale 30 min, que é o mínimo de lá, e é cancelado quando a reserva vence). |
 | `paid` | `sold` (baixa definitiva) | Pagamento **aprovado** no Mercado Pago. Libera o comprovante e atribui consultor. |
 | `expired` / `failed` | volta a `available` | Pix não pago no prazo / cartão recusado. Cobranças abertas são canceladas. |
 | `refund_pending` → `refunded` | volta a `available` | Crédito não aprovado (painel) ou pagamento tardio sem estoque. Estorno no MP. |

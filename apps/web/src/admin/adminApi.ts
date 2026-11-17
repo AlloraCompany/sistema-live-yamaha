@@ -32,6 +32,8 @@ export const adminApi = {
   offlineSale: (delta: 1 | -1) => api<{ offlineSales: number }>(`${base}/live/offline-sales`, { method: 'POST', json: { delta } }),
   saveGoals: (goals: Omit<Goal, 'id'>[]) => api<Goal[]>(`${base}/goals`, { method: 'PUT', json: { goals } }),
   release: (id: number, released: boolean) => api(`${base}/models/${id}/release`, { method: 'POST', json: { released } }),
+  feature: (id: number, featured: boolean) =>
+    api<{ featuredModelId: number | null }>(`${base}/models/${id}/feature`, { method: 'POST', json: { featured } }),
   releaseAll: (released: boolean) => api(`${base}/models/release-all`, { method: 'POST', json: { released } }),
   createModel: (m: Record<string, unknown>) => api<{ id: number }>(`${base}/models`, { method: 'POST', json: m }),
   patchModel: (id: number, m: Record<string, unknown>) => api(`${base}/models/${id}`, { method: 'PATCH', json: m }),
@@ -50,7 +52,7 @@ export const adminApi = {
   },
   completeOrder: (id: string) => api(`${base}/orders/${id}/complete`, { method: 'POST', json: {} }),
   refundOrder: (id: string, reason: string) => api(`${base}/orders/${id}/refund`, { method: 'POST', json: { reason } }),
-  waitlist: () => api<{ id: number; name: string; whatsapp: string; created_at: string; model_name: string }[]>(`${base}/waitlist`),
+  wants: () => api<{ model_id: number; model_name: string; count: number; updated_at: string }[]>(`${base}/wants`),
   patchStore: (id: number, s: { name: string; whatsapp: string | null }) =>
     api<AdminStore[]>(`${base}/stores/${id}`, { method: 'PATCH', json: s }),
   createStore: (s: { name: string; whatsapp: string | null }) =>

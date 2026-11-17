@@ -62,7 +62,6 @@ const liveSchema = z
       }),
     showThermometer: z.boolean(),
     showLockedPrices: z.boolean(),
-    holdMinutes: z.coerce.number().int().min(5).max(120),
     testimonials: z
       .array(z.object({ name: z.string().trim().min(2).max(60), when: z.string().trim().max(60), text: z.string().trim().min(5).max(400) }))
       .max(12),
@@ -80,7 +79,6 @@ const LIVE_COLUMN: Record<keyof z.infer<typeof liveSchema>, string> = {
   whatsapp: 'whatsapp',
   showThermometer: 'show_thermometer',
   showLockedPrices: 'show_locked_prices',
-  holdMinutes: 'hold_minutes',
   testimonials: 'testimonials',
 };
 
@@ -120,9 +118,11 @@ const modelSchema = z.object({
   offerActive: z.boolean().default(true),
   sort: z.coerce.number().int().min(0).max(1000).default(0),
 });
-const modelPatchSchema = modelSchema.partial();
+// O estoque total só é alterado em moto que já existe (a criação sempre começa com 0).
+const modelPatchSchema = modelSchema.extend({ stockTotal: z.coerce.number().int().min(0).max(1000) }).partial();
 
-const MODEL_COLUMN: Record<keyof z.infer<typeof modelSchema>, string> = {
+const MODEL_COLUMN: Record<keyof z.infer<typeof modelPatchSchema>, string> = {
+  stockTotal: 'stock_total',
   name: 'name',
   slug: 'slug',
   categoryLabel: 'category_label',
@@ -355,8 +355,27 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         if (isUniqueViolation(err, 'models_slug_key')) throw Errors.validation('Já existe uma moto com este endereço (slug).');
         throw err;
       }
+      // Moto fora da loja não fica em destaque.
+      if (patch.offerActive === false) await db.query(`UPDATE live_settings SET featured_model_id = NULL WHERE featured_model_id = $1`, [id]);
       await audit(db.pool, ADMIN, 'model.updated', 'model', id, patch as Record<string, unknown>);
       return { ok: true };
+    });
+
+    // Destaque: a moto que o apresentador está mostrando agora (uma por vez; aparece no topo da loja).
+    app.post('/models/:id/feature', async (req) => {
+      const { id } = parse(idParam, req.params);
+      const { featured } = parse(z.object({ featured: z.boolean() }), req.body);
+      if (featured) {
+        const res = await db.query(
+          `UPDATE live_settings SET featured_model_id = $1 WHERE id = 1 AND EXISTS (SELECT 1 FROM models WHERE id = $1 AND offer_active)`,
+          [id],
+        );
+        if (res.rowCount === 0) throw Errors.notFound('Moto');
+      } else {
+        await db.query(`UPDATE live_settings SET featured_model_id = NULL WHERE featured_model_id = $1`, [id]);
+      }
+      await audit(db.pool, ADMIN, featured ? 'model.featured' : 'model.unfeatured', 'model', id);
+      return { featuredModelId: featured ? id : null };
     });
 
     app.post('/models/:id/release', async (req) => {
@@ -368,6 +387,9 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         [id, released],
       );
       if (res.rowCount === 0) throw Errors.notFound('Moto');
+      // Liberar é o momento do anúncio: a moto entra em destaque. Bloquear tira o destaque dela.
+      if (released) await db.query(`UPDATE live_settings SET featured_model_id = $1 WHERE id = 1`, [id]);
+      else await db.query(`UPDATE live_settings SET featured_model_id = NULL WHERE featured_model_id = $1`, [id]);
       await audit(db.pool, ADMIN, released ? 'model.released' : 'model.locked', 'model', id);
       return { releasedAt: res.rows[0]!.released_at };
     });
@@ -379,6 +401,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
           WHERE offer_active`,
         [released],
       );
+      if (!released) await db.query(`UPDATE live_settings SET featured_model_id = NULL WHERE featured_model_id IS NOT NULL`);
       await audit(db.pool, ADMIN, released ? 'model.release_all' : 'model.lock_all', 'model', 'all');
       return { ok: true };
     });
@@ -528,6 +551,15 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       const { rows } = await db.query(
         `SELECT w.id, w.name, w.whatsapp, w.created_at, m.name AS model_name
            FROM waitlist w JOIN models m ON m.id = w.model_id ORDER BY w.created_at DESC LIMIT 1000`,
+      );
+      return rows;
+    });
+
+    // "Eu quero!": quantos toques cada moto esgotada recebeu (sem dados de cliente).
+    app.get('/wants', async () => {
+      const { rows } = await db.query(
+        `SELECT m.id AS model_id, m.name AS model_name, w.count, w.updated_at
+           FROM model_wants w JOIN models m ON m.id = w.model_id WHERE w.count > 0 ORDER BY w.count DESC, m.name`,
       );
       return rows;
     });

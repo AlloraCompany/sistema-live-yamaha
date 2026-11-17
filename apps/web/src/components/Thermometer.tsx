@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { nextGoalSentence, type ThermometerProgress } from '@lle/shared';
 import { useThermometer, useLive } from '../lib/live';
 import { shareLive } from '../lib/browser';
-import { IconChevronUp, IconClose, IconShare } from './Icons';
+import { IconCheck, IconChevronUp, IconClose, IconGift, IconShare } from './Icons';
 import { useToast } from './Toast';
 
 // Geometria do wireframe: cada meta ocupa 110px de tubo; base de 23,5px acima do bulbo.
@@ -82,6 +82,110 @@ export function Thermometer({ variant = 'aside' }: { variant?: 'aside' | 'inline
       </div>
       <ShareButton />
     </aside>
+  );
+}
+
+/**
+ * Termômetro da loja no celular (aprovado em 17/11/2026): contador, frase da próxima meta, trilha com um
+ * trecho por meta e os brindes em linhas. Substitui o banner azul + termômetro em pé, que repetiam a
+ * mesma informação em duas telas de altura.
+ */
+export function ThermoCard() {
+  const p = useThermometer();
+  const { snapshot } = useLive();
+  const toast = useToast();
+  const show = Boolean(snapshot?.live.showThermometer);
+  const done = p && show ? p.goals.filter((g) => g.state === 'achieved') : [];
+  const doneKey = done.map((g) => g.id).join(',');
+  const before = useRef<string | null>(null);
+  const [fresh, setFresh] = useState<number[]>([]);
+
+  // Meta batida enquanto a pessoa está na página: o brinde pisca e sai um aviso.
+  useEffect(() => {
+    if (!p) return;
+    const prev = before.current;
+    before.current = doneKey;
+    if (prev === null) return;
+    const old = prev ? prev.split(',').map(Number) : [];
+    const novas = done.filter((g) => !old.includes(g.id));
+    const last = novas[novas.length - 1];
+    if (!last) return;
+    setFresh(novas.map((g) => g.id));
+    toast(`Meta batida! ${last.prize} liberado para todo mundo que comprou.`);
+    const t = window.setTimeout(() => setFresh([]), 2000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doneKey, p === null]);
+
+  if (!p) return null;
+  const goals = show ? p.goals : [];
+  let prev = 0;
+  const parts = goals.map((g) => {
+    const part = g.state === 'achieved' ? 1 : g.state === 'next' ? Math.max(0, (p.sold - prev) / (g.threshold - prev)) : 0;
+    prev = g.threshold;
+    return part;
+  });
+  return (
+    <section className="tcard" aria-label="Termômetro de metas da live" aria-live="polite">
+      <div className="tcard__top">
+        <span className="tcard__num">{p.sold}</span>
+        <span className="tcard__lbl">
+          <b>{p.sold === 1 ? 'moto vendida' : 'motos vendidas'}</b>
+          nesta live
+        </span>
+        <button
+          type="button"
+          className="tcard__share"
+          onClick={async () => {
+            const r = await shareLive();
+            if (r === 'copied') toast('Link da live copiado. Cole no WhatsApp dos amigos!');
+          }}
+        >
+          <IconShare size={16} />
+          Convidar
+        </button>
+      </div>
+      {goals.length > 0 && p.next && (
+        <p className="tcard__next">
+          Faltam <b className="y">{p.next.remaining}</b> para liberar <b>{p.next.prize}</b> para todo mundo que comprou!
+        </p>
+      )}
+      {goals.length > 0 && !p.next && (
+        <p className="tcard__next">
+          <b className="y">Todas as metas batidas!</b> Os brindes valem para todo mundo que comprou na live.
+        </p>
+      )}
+      {goals.length === 0 && p.sold === 0 && <p className="tcard__next">Seja a primeira pessoa a garantir a sua.</p>}
+      {goals.length > 0 && (
+        <>
+          <div className="tcard__track" aria-hidden="true">
+            {goals.map((g, i) => (
+              <div key={g.id} className={`tseg ${g.state === 'achieved' ? 'tseg--ok' : ''}`}>
+                <div className="tseg__bar">
+                  <div className="tseg__fill" style={{ width: `${((parts[i] ?? 0) * 100).toFixed(1)}%` }} />
+                </div>
+                <span className="tseg__n">{g.threshold}</span>
+              </div>
+            ))}
+          </div>
+          <ol className="tcard__goals">
+            {goals.map((g) => (
+              <li
+                key={g.id}
+                className={`tgoal ${g.state === 'achieved' ? 'tgoal--done' : g.state === 'next' ? 'tgoal--next' : ''} ${fresh.includes(g.id) ? 'tgoal--new' : ''}`}
+              >
+                <span className="tgoal__ic">{g.state === 'achieved' ? <IconCheck size={18} strokeWidth={3.2} /> : <IconGift size={18} color="currentColor" />}</span>
+                <span className="tgoal__tx">
+                  <b>{g.prize}</b>
+                  <span>com {g.threshold} motos vendidas</span>
+                </span>
+                {g.state === 'achieved' ? <span className="tgoal__st tgoal__st--pill">LIBERADO</span> : <span className="tgoal__st">faltam {g.remaining}</span>}
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+    </section>
   );
 }
 

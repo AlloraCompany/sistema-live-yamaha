@@ -10,10 +10,10 @@ import { FailedJobsSection } from './sections/FailedJobsSection';
 import { ReleaseSection } from './sections/ReleaseSection';
 import { BroadcastSection } from './sections/BroadcastSection';
 import { GoalsSection } from './sections/GoalsSection';
-import { ModelsSection } from './sections/ModelsSection';
 import { OrdersSection } from './sections/OrdersSection';
 import { ReportSection } from './sections/ReportSection';
 import { StoresSection } from './sections/StoresSection';
+import { WaitlistSection } from './sections/WaitlistSection';
 
 function AdminHeader({ onLogout }: { onLogout?: () => void }) {
   return (
@@ -41,11 +41,11 @@ function AdminNav({ data }: { data: Dashboard | null }) {
   const links: { id: string; label: string; count?: number }[] = [
     { id: 'resumo', label: 'Resumo' },
     ...(failed > 0 ? [{ id: 'atencao', label: 'Atenção', count: failed }] : []),
-    { id: 'liberacao', label: 'Liberação' },
+    { id: 'liberacao', label: 'Motos' },
     { id: 'transmissao', label: 'Transmissão' },
     { id: 'metas', label: 'Metas' },
-    { id: 'motos', label: 'Motos' },
     { id: 'reservas', label: 'Reservas' },
+    { id: 'espera', label: 'Eu quero', count: data?.kpis.waitlist },
     { id: 'relatorio', label: 'Relatório' },
     { id: 'lojas', label: 'Lojas' },
   ];
@@ -266,8 +266,8 @@ export default function AdminApp() {
             <ReleaseSection data={data} onChange={reload} />
             <BroadcastSection data={data} onChange={reload} />
             <GoalsSection data={data} onChange={reload} />
-            <ModelsSection data={data} onChange={reload} />
             <OrdersSection data={data} onChange={reload} />
+            <WaitlistSection data={data} onChange={reload} />
             <ReportSection data={data} onChange={reload} />
             <StoresSection data={data} onChange={reload} />
           </>

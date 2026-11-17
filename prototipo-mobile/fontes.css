@@ -1,0 +1,7 @@
+/* As fontes do site, com caminho relativo para o protótipo abrir direto do arquivo. */
+@font-face { font-family: 'Anton'; font-weight: 400; font-display: swap; src: url('../apps/web/public/fonts/anton-400-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Poppins'; font-weight: 400; font-display: swap; src: url('../apps/web/public/fonts/poppins-400-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Poppins'; font-weight: 500; font-display: swap; src: url('../apps/web/public/fonts/poppins-500-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Poppins'; font-weight: 600; font-display: swap; src: url('../apps/web/public/fonts/poppins-600-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Poppins'; font-weight: 700; font-display: swap; src: url('../apps/web/public/fonts/poppins-700-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Poppins'; font-weight: 800; font-display: swap; src: url('../apps/web/public/fonts/poppins-800-latin.woff2') format('woff2'); }

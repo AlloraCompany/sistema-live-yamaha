@@ -7,7 +7,7 @@ export function TermsPage() {
   const { snapshot } = useLive();
   // O valor vem sempre do painel (Transmissão); enquanto carrega, a frase sai sem valor.
   const voucher = snapshot ? ` de ${formatBRL(snapshot.live.voucherCents)}` : '';
-  const hold = snapshot?.live.holdMinutes ?? 30;
+  const hold = snapshot?.live.holdMinutes ?? 15;
   const items = [
     `O voucher${voucher} garante o preço de live da moto escolhida e reserva uma unidade em nome do comprador.`,
     `Enquanto o Pix não é pago, a unidade fica segurada por ${hold} minutos. Sem pagamento nesse prazo, a reserva é cancelada automaticamente e a unidade volta a ficar disponível.`,

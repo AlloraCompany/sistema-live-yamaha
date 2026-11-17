@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hoje · loja no celular</title>
+<!-- Reprodução da loja atual: usa a folha de estilos do próprio site, sem alterações. -->
+<link rel="stylesheet" href="../apps/web/src/styles/global.css">
+<link rel="stylesheet" href="fontes.css">
+<style>.svg16 svg{width:16px;height:16px} .player__play svg{width:28px;height:28px}</style>
+</head>
+<body data-tela="hoje">
+<div class="page page--sticky-header">
+  <header class="site-header site-header--sticky"><div class="site-header__inner">
+    <div class="site-header__start"><span class="brand"><img class="brand__lle" src="../apps/web/public/brand/live-limpa-estoque-horizontal.png" alt="Live Limpa Estoque"></span></div>
+    <div class="site-header__end"><span class="pill-live pill-live--on"><span class="pill-live__dot"></span>AO VIVO</span></div>
+  </div></header>
+  <div class="shell"><main class="shell__main">
+    <div class="hero">
+      <div class="hero__meta"><span class="pill-blue">AO VIVO NO YOUTUBE</span></div>
+      <h1 class="display hero__title">Live Limpa Estoque <span class="hl">Yamaha</span></h1>
+    </div>
+    <div class="player"><button class="player__play" type="button" aria-label="Vídeo (exemplo)" id="play"></button><div class="player__note">Aqui fica a transmissão do YouTube</div></div>
+    <div class="viewers"><span class="viewers__count svg16" id="olho"></span><a href="#" class="svg16">Abrir no YouTube</a></div>
+    <div id="banner"></div>
+    <div id="termo"></div>
+    <div class="voucher-card">
+      <div class="voucher-card__value"><span class="voucher-card__kicker">VOUCHER</span><span class="voucher-card__amount" id="voucher"></span></div>
+      <div class="voucher-card__body">
+        <p>Garante o preço da live. Pago via Pix ou cartão e abatido da entrada no fechamento. Devolvido integralmente se o crédito não for aprovado.</p>
+        <div class="voucher-card__gift svg16"><span id="gift"></span><span>Comprando agora você leva também os brindes coletivos já liberados e os que forem desbloqueados até o fim da live.</span></div>
+      </div>
+    </div>
+    <div id="motos" class="section-head"><h2 class="display">Motos da live</h2><p id="resumo"></p></div>
+    <div class="grid-motos" id="lista"></div>
+  </main></div>
+</div>
+<script src="dados.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+$('play').innerHTML = ICONE.play; $('gift').innerHTML = ICONE.gift; $('voucher').textContent = DADOS.voucher;
+$('olho').innerHTML = ICONE.eye + `<span><strong>${DADOS.assistindo.toLocaleString('pt-BR')}</strong> assistindo agora</span>`;
+
+function render() {
+  const p = progresso(DADOS.vendidas, DADOS.metas);
+  $('banner').innerHTML = `<div class="sold-banner"><div class="sold-banner__count"><span class="sold-banner__num">${p.vendidas}</span>
+    <span class="sold-banner__label">${p.vendidas === 1 ? 'moto vendida' : 'motos vendidas'}<br>nesta live</span></div><span class="sold-banner__sep"></span>
+    <div class="sold-banner__info">${p.proxima
+      ? `<div class="sold-banner__goal">Faltam <strong class="y">${p.proxima.faltam}</strong> para liberar <strong>${p.proxima.brinde}</strong> para todo mundo que comprar na live</div>`
+      : `<div class="sold-banner__goal"><strong class="y">Todas as metas batidas!</strong> Os brindes valem para todo mundo que comprou na live.</div>`}</div></div>`;
+  const SLOT = 110, n = p.metas.length, tube = 42 + SLOT * n, height = tube + 56, fill = Math.min(tube - 3, 23.5 + SLOT * n * p.fill);
+  const desc = [...p.metas].reverse();
+  $('termo').innerHTML = `<aside class="thermo thermo--inline"><div><div class="thermo__title">Termômetro da live</div>
+    <div class="thermo__sub">Quanto mais motos vendidas, mais brindes todo mundo ganha</div></div>
+    <div class="thermo__body"><div class="thermo__gauge" style="height:${height}px"><div class="thermo__tube" style="height:${tube}px">
+      <div class="thermo__fill" style="height:${fill}px"></div>${desc.map((g, i) => `<div class="thermo__tick" style="top:${i * SLOT + 17}px"></div>`).join('')}</div>
+      <div class="thermo__bulb" style="top:${tube - 28}px"><b>${p.vendidas}</b><small>VENDIDAS</small></div></div>
+    <div class="thermo__goals" style="height:${height}px">${desc.map((g, i) => `<div class="goal ${g.proxima ? 'goal--next' : g.batida ? 'goal--done' : ''}" style="top:${i * SLOT}px">
+      <span class="goal__k">${g.motos} MOTOS${g.proxima ? '<span class="goal__tag">PRÓXIMA META</span>' : g.batida ? '<span class="goal__tag">LIBERADO</span>' : ''}</span>
+      <span class="goal__prize">${g.brinde}</span><span class="goal__left">${g.batida ? 'liberado para todos' : 'faltam ' + g.faltam}</span></div>`).join('')}</div></div>
+    <div class="thermo__note">Os brindes valem para todo mundo que comprar na live, inclusive quem comprou antes de a meta ser batida.</div>
+    <button type="button" class="btn btn--outline btn--block btn--md svg16">${ICONE.share}Chamar amigos para a live</button></aside>`;
+}
+
+const lib = DADOS.motos.filter((m) => m.estado !== 'bloqueada').length;
+$('resumo').innerHTML = `<strong>${lib} de ${DADOS.motos.length} liberadas até agora.</strong> As motos são liberadas uma a uma conforme o apresentador anuncia. Clique para ver fotos e ficha técnica.`;
+$('lista').innerHTML = DADOS.motos.map((m) => {
+  const livre = m.estado !== 'bloqueada';
+  const selo = m.disp > 1 ? ['green', m.disp + ' disponíveis'] : m.disp === 1 ? ['green', 'Última unidade'] : ['dark', 'Esgotada'];
+  return `<article class="moto-card"><div class="moto-card__media"><img src="${m.foto}" alt="${m.nome}" loading="lazy">
+    ${livre ? `<span class="moto-card__badge"><span class="badge badge--${selo[0]}">${selo[1]}</span></span>`
+            : `<div class="lock-overlay svg16"><span class="lock-overlay__icon">${ICONE.lock}</span><span>Liberada quando for anunciada na live</span></div>`}</div>
+    <div class="moto-card__body"><div><div class="kicker">${m.tipo} · 3 cores</div><div class="moto-card__name">${m.nome}</div></div>
+    ${livre ? `<div class="price-from price-from--strike">De ${brl(m.tabela)}</div><div class="price-box"><span class="price-box__label">PREÇO NA LIVE</span><span class="price-box__value">${brl(m.live)}</span></div>
+               <div><span class="badge badge--green">Economia de ${brl(m.tabela - m.live)} na live</span></div><div class="released-at">Liberada na live há 4 min</div>
+               <a class="btn ${m.disp ? 'btn--primary' : 'btn--outline'} btn--block" href="#">${m.disp ? 'Ver detalhes e reservar' : 'Ver detalhes e lista de espera'}</a>`
+            : `<div class="price-from">Tabela ${brl(m.tabela)}</div><div class="price-locked svg16">${ICONE.lock}Preço de live revelado no anúncio</div>
+               <div class="fin-text">Fique na live: a compra abre assim que a moto for anunciada</div><a class="btn btn--outline btn--block" href="#">Ver detalhes</a>`}
+    </div></article>`;
+}).join('');
+
+ouvirVendas(render);
+render();
+</script>
+</body>
+</html>

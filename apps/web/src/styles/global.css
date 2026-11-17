@@ -118,6 +118,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--blue) !important
 /* ---------- Estrutura da loja ---------- */
 .page { width: 100%; background: #FFFFFF; color: var(--ink-2); min-height: 100vh; display: flex; flex-direction: column; }
 .shell { max-width: 1280px; margin: 0 auto; padding: 32px 40px 0; display: flex; align-items: flex-start; gap: 40px; width: 100%; }
+.shell-top { max-width: 1280px; margin: 0 auto; padding: 32px 40px 0; width: 100%; }
+.shell-top + .shell { padding-top: 24px; }
+.shell-top + .shell .player { margin-top: 0; }
 .shell__main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
 .shell__aside { width: 340px; flex-shrink: 0; position: sticky; top: 24px; }
 
@@ -204,7 +207,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--blue) !important
 .how__step--hl .how__text { color: var(--ink-2); }
 
 /* ---------- Termômetro ---------- */
-.thermo { box-sizing: border-box; background: #FFFFFF; border: 2px solid var(--ink); border-radius: 20px; padding: 22px; display: flex; flex-direction: column; gap: 18px; box-shadow: 6px 6px 0 var(--ink); }
+.thermo { box-sizing: border-box; background: #FFFFFF; border: 1.5px solid var(--line); border-radius: 20px; padding: 22px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 8px 24px rgba(27, 27, 27, .07); }
 .thermo__title { font-family: var(--display); font-size: 26px; line-height: 1.1; text-transform: uppercase; color: var(--ink); }
 .thermo__sub { font-size: 13px; line-height: 1.45; color: var(--text); margin-top: 4px; }
 .thermo__body { display: flex; gap: 14px; }
@@ -393,7 +396,7 @@ select.input:disabled { cursor: not-allowed; }
   .sold-banner__label { font-size: 16px; }
   .sold-banner__sep { display: none; }
   .sold-banner__goal { background: rgba(255, 255, 255, .14); border-radius: 12px; padding: 12px 14px; font-size: 14px; }
-  .thermo--inline { margin-top: 16px; padding: 18px; box-shadow: 4px 4px 0 var(--ink); }
+  .thermo--inline { margin-top: 16px; padding: 18px; }
   .voucher-card { flex-direction: column; align-items: stretch; gap: 12px; padding: 18px; border-radius: 18px; }
   .voucher-card__amount { font-size: 44px; }
   .section-head { margin-top: 40px; }
@@ -478,3 +481,118 @@ select.input:disabled { cursor: not-allowed; }
   .offer-strip__items::-webkit-scrollbar { display: none; }
   .offer { flex: 0 0 72%; scroll-snap-align: start; }
 }
+
+/* ==========================================================================
+   Loja no celular (aprovado em 17/11/2026): vídeo colado no cabeçalho, termômetro em um bloco só,
+   voucher em faixa e lista de motos compacta. Só aparece abaixo de 1024px (ver useIsMobile).
+   ========================================================================== */
+@media (max-width: 1023px) {
+  .page--sticky-header .shell { padding-top: 0; }
+  .page--sticky-header .player { margin-top: 0; }
+  .page--sticky-header .section-head { margin-top: 32px; margin-bottom: 0; flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 12px; }
+}
+
+/* Termômetro */
+.tcard { margin-top: 16px; border-radius: 20px; padding: 18px 16px 16px; background: var(--surface); border: 1.5px solid var(--line); color: var(--ink); }
+.tcard__top { display: flex; align-items: center; gap: 12px; }
+.tcard__num { font-family: var(--display); font-size: 60px; line-height: .95; color: var(--blue); font-variant-numeric: tabular-nums; }
+.tcard__lbl { flex: 1 1 0; min-width: 0; font-size: 13px; line-height: 1.25; color: var(--muted); }
+.tcard__lbl b { display: block; font-size: 16px; font-weight: 800; color: var(--ink); }
+.tcard__share { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--line-2); background: #FFFFFF; color: var(--blue-700); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; flex-shrink: 0; }
+.tcard__next { margin-top: 12px; font-size: 15px; line-height: 1.4; color: var(--text); }
+.tcard__next b { font-weight: 800; color: var(--ink); }
+.tcard__next .y { color: var(--blue-700); }
+.tcard__track { display: flex; gap: 6px; margin-top: 12px; }
+.tseg { flex: 1 1 0; min-width: 0; }
+.tseg__bar { height: 12px; border-radius: 999px; overflow: hidden; background: #D9DCE1; }
+.tseg__fill { height: 100%; border-radius: 999px; background: var(--blue); transition: width .8s cubic-bezier(.2, .8, .2, 1); }
+.tseg__n { display: block; text-align: right; font-size: 11px; font-weight: 700; margin-top: 4px; color: var(--muted); }
+.tseg--ok .tseg__n { color: var(--blue-700); }
+.tcard__goals { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.tgoal { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 12px; border-radius: 14px; background: #FFFFFF; border: 1.5px solid var(--line); }
+.tgoal__ic { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--yellow-soft); border: 1.5px solid var(--yellow); color: var(--ink); }
+.tgoal__tx { flex: 1 1 0; min-width: 0; line-height: 1.25; }
+.tgoal__tx b { display: block; font-size: 14px; font-weight: 800; }
+.tgoal__tx span { font-size: 12px; color: var(--muted); }
+.tgoal__st { font-size: 12px; font-weight: 800; white-space: nowrap; color: var(--muted); }
+.tgoal__st--pill { font-size: 10px; letter-spacing: .06em; padding: 5px 9px; border-radius: 999px; }
+.tgoal--next { border-color: #A9C2F7; box-shadow: 0 0 0 4px var(--yellow-soft); }
+.tgoal--next .tgoal__ic { background: var(--yellow); }
+.tgoal--next .tgoal__st { color: var(--blue-700); font-size: 13px; }
+.tgoal--done { background: var(--yellow-soft); border-color: var(--yellow); }
+.tgoal--done .tgoal__ic { background: var(--yellow); }
+.tgoal--done .tgoal__tx span { color: var(--text); }
+.tgoal--done .tgoal__st { background: var(--yellow); color: var(--ink); }
+.tgoal--new { animation: tgoal-new 1.6s ease-out; }
+@keyframes tgoal-new { 0% { transform: scale(.96); box-shadow: 0 0 0 0 rgba(255, 206, 0, .9); } 40% { transform: scale(1.02); } 100% { transform: scale(1); box-shadow: 0 0 0 18px rgba(255, 206, 0, 0); } }
+@media (prefers-reduced-motion: reduce) { .tgoal--new { animation: none; } .tseg__fill { transition: none; } }
+
+/* Voucher em faixa */
+.vstrip { margin-top: 12px; background: var(--yellow); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; color: var(--ink); }
+.vstrip__v { flex-shrink: 0; display: flex; flex-direction: column; }
+.vstrip__v small { font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.vstrip__v b { font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 1.05; white-space: nowrap; }
+.vstrip p { font-size: 12.5px; line-height: 1.45; color: var(--ink-2); }
+.vstrip a { color: var(--ink); font-weight: 700; display: inline-block; }
+
+/* Lista de motos */
+.mcount { font-size: 12px; font-weight: 700; color: var(--green); background: var(--green-soft); padding: 6px 10px; border-radius: 999px; white-space: nowrap; }
+.mchips { display: flex; gap: 8px; padding: 12px 0 4px; }
+.mchips button { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--line-2); background: #FFFFFF; color: var(--ink); font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.mchips button[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--yellow); }
+.mlist { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
+.msub { margin-top: 28px; }
+.msub h3 { font-size: 16px; font-weight: 800; color: var(--ink); }
+.msub p { font-size: 12.5px; line-height: 1.45; color: var(--text); margin-top: 2px; }
+.mfeat { border: 1.5px solid var(--line-2); border-radius: 18px; overflow: hidden; box-shadow: 4px 4px 0 var(--line-2); background: #FFFFFF; display: block; color: inherit; text-decoration: none; margin-right: 4px; }
+.mfeat:hover, .mrow:hover { color: inherit; }
+.viewers + .mfeat { margin-top: 16px; }
+@media (max-width: 430px) {
+  .mfeat__price b { font-size: 32px; }
+  .mfeat__tags .badge { font-size: 10px; padding: 5px 8px; }
+}
+.mfeat--wide { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); margin: 20px 0 0; }
+.mfeat--wide .mfeat__flag { grid-column: 1 / -1; font-size: 12px; padding: 10px 18px; }
+.mfeat--wide img { height: 100%; min-height: 240px; max-height: 300px; border-bottom: none; border-right: 1px solid var(--line); padding: 12px; }
+.mfeat--wide .mfeat__body { padding: 20px 22px; gap: 14px; justify-content: center; }
+.mfeat--wide .mfeat__name { font-size: 28px; }
+.mfeat--wide .mfeat__price b { font-size: 48px; }
+.mfeat__flag { background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 800; letter-spacing: .08em; padding: 8px 14px; display: flex; align-items: center; gap: 8px; }
+.mfeat__flag i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); animation: pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mfeat__flag i { animation: none; } }
+.mfeat img { display: block; width: 100%; height: 176px; object-fit: contain; border-bottom: 1px solid var(--line); }
+.mfeat__body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.mfeat__name { font-size: 20px; font-weight: 800; color: var(--ink); line-height: 1.2; }
+.mfeat__price { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; background: var(--blue-soft); border-radius: 12px; padding: 10px 12px; }
+.mfeat__price small { display: block; font-size: 12px; color: var(--muted); text-decoration: line-through; }
+.mfeat__price em { display: block; font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--blue-700); margin-top: 2px; }
+.mfeat__price b { display: block; font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1.05; color: var(--blue); white-space: nowrap; }
+.mfeat__tags { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-bottom: 4px; min-width: 0; }
+.mrow { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; border: 1.5px solid var(--line); border-radius: 16px; padding: 10px; background: #FFFFFF; color: inherit; text-decoration: none; }
+.mrow__img { position: relative; width: 104px; min-height: 84px; flex-shrink: 0; border-radius: 10px; overflow: hidden; background: #FFFFFF; border: 1px solid var(--line); display: flex; align-items: center; }
+.mrow__img img { display: block; width: 100%; height: 100%; max-height: 104px; object-fit: contain; }
+.mrow__tx { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mrow__badge { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--green); }
+.mrow__badge--yellow { color: #6B5200; }
+.mrow__badge--dark { color: var(--ink); }
+.mrow__name { font-size: 15px; font-weight: 800; color: var(--ink); line-height: 1.25; }
+.mrow__from { font-size: 12px; color: var(--muted); }
+.mrow__price { margin-top: auto; font-family: var(--display); font-size: 30px; line-height: 1.1; color: var(--blue); white-space: nowrap; }
+.mrow__note { flex-basis: 100%; font-size: 12px; color: var(--text); }
+.mrow--off .mrow__img img { filter: grayscale(1); opacity: .55; }
+.mrow--off .mrow__price { color: var(--muted); }
+.mrow--lock { flex-wrap: nowrap; align-items: center; padding: 8px 10px; min-height: 76px; }
+.mrow--lock .mrow__img { width: 72px; min-height: 0; height: 60px; border: 0; }
+.mrow--lock .mrow__img::after { content: ''; position: absolute; inset: 0; background: rgba(27, 27, 27, .55); }
+.mrow__lock { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; color: var(--yellow); }
+.mrow--lock .mrow__name { font-size: 14px; }
+.mrow__go { color: var(--line-3); display: flex; align-items: center; }
+
+/* "Eu quero! Traz de volta na live" (moto esgotada) */
+.btn--want { background: var(--yellow); color: var(--ink); border-color: var(--ink); }
+.btn--want:hover:not(:disabled) { transform: translateY(-2px); }
+.btn--want-done { background: var(--green-soft); color: var(--green); border-color: var(--green-soft); cursor: default; }
+.moto-card__actions { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+.moto-card__actions .btn { margin-top: 0; }
+.mrow__main { flex: 1 1 100%; display: flex; gap: 12px; align-items: stretch; color: inherit; text-decoration: none; min-width: 0; }
+.mrow__main:hover { color: inherit; }

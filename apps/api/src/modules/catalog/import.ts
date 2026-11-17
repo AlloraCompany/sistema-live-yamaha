@@ -36,7 +36,9 @@ export async function applyCatalog(
                              installment_cents, installments, rate_note, specs, description, offer_active, sort)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true, $13)
          ON CONFLICT (slug) DO UPDATE SET
-           name = EXCLUDED.name, category_label = EXCLUDED.category_label, colors = EXCLUDED.colors,
+           name = EXCLUDED.name, category_label = EXCLUDED.category_label,
+           -- Planilha sem cores (estoque só em quantidade) não apaga as cores já gravadas na moto.
+           colors = CASE WHEN cardinality(EXCLUDED.colors) = 0 THEN models.colors ELSE EXCLUDED.colors END,
            price_live_cents = EXCLUDED.price_live_cents, price_table_cents = EXCLUDED.price_table_cents,
            down_payment_cents = EXCLUDED.down_payment_cents, installment_cents = EXCLUDED.installment_cents,
            installments = EXCLUDED.installments, rate_note = EXCLUDED.rate_note, specs = EXCLUDED.specs,

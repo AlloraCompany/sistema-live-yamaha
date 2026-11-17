@@ -47,6 +47,29 @@ Comece pelo [README.md](README.md) e por [docs/PUBLICACAO.md](docs/PUBLICACAO.md
   - **Loja sem data e sem "Última venda"**: o topo mostra só o selo "AO VIVO NO YOUTUBE" (o campo "Data e hora"
     saiu do painel) e o banner azul não mostra mais "Última venda há X min".
   - **Aviso do PDF** ("Valor abatido da entrada…") em texto pequeno e cinza, sem caixa azul.
+  - **Reserva do Pix fixa em 15 minutos** (migration 003); o campo saiu do painel e a API não altera. O Pix no
+    Mercado Pago vale 30 min (mínimo de lá) e é cancelado quando a reserva vence.
+  - Loja sem a frase abaixo do título; termo do voucher fala em "loja"; seção Lojas do painel sem textos de apoio.
+  - **Um bloco só de motos no painel** ("Motos da live", atalho "Motos"): por moto, Liberar/Bloquear, preço na
+    live, unidades disponíveis (+/−) e oferta ativa. Saíram do painel: nome, categoria, preço de tabela,
+    entrada/parcela, cores, ficha técnica, descrição, fotos e "Nova moto" (vêm do cadastro por planilha; a API
+    continua aceitando).
+  - **Estoque total, sem "reserva"**: a operação achou confuso o botão "+1 da reserva" (testado e retirado no mesmo
+    dia). Ficou só o texto "Estoque total (incluindo reserva): N" embaixo de "Unidades disponíveis"
+    (migration 006, `models.stock_total`, só consulta; fica vermelho se as unidades no site passarem do total).
+    O cliente nunca vê. A coluna `reserve_units` (migration 005) ficou no banco sem uso.
+  - **Moto em destaque** (migration 007, `live_settings.featured_model_id`): botão "Destacar na loja" em cada
+    moto do painel (uma por vez). Liberar uma moto já a coloca em destaque; bloquear ou desativar tira. Na loja o
+    cartão "EM DESTAQUE AGORA NA LIVE" fica logo abaixo do vídeo, no celular e no computador (antes o celular
+    destacava sozinho a última liberada).
+  - **Termômetro do computador**: borda e sombra cinza (sem o contorno preto) e começando na mesma altura do
+    vídeo (o título da live subiu para cima das duas colunas, `top` do `StoreLayout`).
+  - **Botão "Oferta" do painel**: desativada tira a moto da loja inteira (nem com cadeado aparece); é diferente
+    de Bloquear, que só fecha a compra.
+  - **Metas do termômetro** (gravadas no site em 17/11, editáveis em painel → Metas): 20 motos, boné e camiseta;
+    40, tanque cheio; 60, emplacamento grátis; 80, capacete.
+  - **Loja sem entrada nem parcelas da moto**: isso é tratado direto na venda. "Voucher abatido da entrada" continua.
+  - Descrição das motos: pegar depois do site da Yamaha e gravar no cadastro (não pelo painel).
 
 ## Estado em 16/11/2026
 
@@ -55,13 +78,42 @@ Comece pelo [README.md](README.md) e por [docs/PUBLICACAO.md](docs/PUBLICACAO.md
   Hostinger). Ainda com motos de exemplo. Mercado Pago ligado em 16/11 (aplicação "Live Limpa Estoque Yamaha", Checkout
   Transparente, API de Payments; chaves de produção no cofre do Fly; modo ensaio desligado). Plano da
   empresa: ficar no ar até sexta, 20/11. Senha do painel de produção em `.env.producao` (fora do git).
-- Testado: typecheck, 73 testes. O teste de carga rodou só em Mac M4; **falta rodar contra o Fly** no ensaio de
-  17/11 e decidir se a live usa máquina dedicada (cerca de US$ 3,50/dia).
-- **ATENÇÃO**: o voucher está em **R$ 1** desde 16/11 para o teste real de pagamento. **Voltar para R$ 1.000**
-  (painel → Transmissão) antes da live e conferir no ensaio de 17/11.
-- **Faltam**: motos reais (serão **21 modelos diferentes**, chegam preenchidos em 17/11; importar com `docs/planilha-motos.xlsx`), devolver pelo Mercado Pago os dois pagamentos de teste de R$ 1 (Pix em 16/11 e cartão em 17/11, ambos
-  aprovados de ponta a ponta), limpar os dados do ensaio (`ensaio:limpar --confirmar --apagar-pagos`), ajustar "Espectadores
-  exibidos", WhatsApp do gerente de cada loja no painel, conferir vídeo automático no celular/iPhone.
+- Testado: typecheck, 78 testes. **Teste de carga contra o Fly feito em 17/11** (`apps/api/test/load/remote-load.ts`,
+  resultados em `docs/TESTES.md`): 5 mil espectadores com a máquina a 14% de CPU; 1.000 compradores disputando 5 motos
+  em 5,8 s, sem erro nem inconsistência. A máquina da API não foi o gargalo: **não precisa de máquina dedicada**.
+  Com 5 mil ligados por 2 minutos a CPU ficou em 1% por máquina (abaixo da cota de 6,25% das compartilhadas).
+- **Segunda máquina ligada em 17/11 às 19h39** (`fly scale count 2`, autorizada para 17 e 18/11, ~US$ 0,71/dia).
+  **Depois da live: `fly scale count 1`** e avisar. Publicar continua sendo `fly deploy --ha=false`.
+- **Limite de pedidos por IP: 100/min** desde 17/11 (`ORDER_RATE_LIMIT_PER_MINUTE` no `fly.toml`; aplicado nas duas
+  máquinas com `fly machine update -e`, sem publicar código). **Limite geral da API: 3.000/min por IP**
+  (`API_RATE_LIMIT_PER_MINUTE`), pelo mesmo caminho.
+- **Outra conversa está mexendo no design/UX nesta mesma pasta** (17/11): não publicar nem enviar ao git sem o ok
+  da operação, porque a publicação leva tudo o que estiver na pasta.
+- **Voucher de volta em R$ 1.000 desde 17/11** (ficou em R$ 1 de 16 a 17/11 para o teste real de pagamento).
+- **Motos reais importadas em 17/11**: 24 modelos, todos bloqueados, 103 unidades no começo e 65 de reserva
+  (estoque total de 168 gravado no painel; a reserva entra com o **+** de "Unidades disponíveis"; tabela em
+  `docs/estoque-da-live.md`). Estoque é só quantidade; as cores (do estoque da Geração, com nomes simplificados)
+  valem só como "cor de preferência". Dados do ensaio apagados; cópias em `.data/` (fora do git). As 3 motos de
+  exemplo foram apagadas do banco em 17/11 a pedido da operação (não tinham pedidos; cópia com fotos em
+  `.data/motos-de-exemplo-apagadas-2026-11-17.json`).
+- **Publicado em 17/11 (versões 33 a 36)**: termômetro cinza alinhado ao vídeo, moto em destaque, bloco único "Motos da live" com estoque total, loja sem
+  entrada/parcelas (cópia dos dados de antes em `.data/copia-producao-2026-11-17-antes-da-reserva.json`).
+  Nada disso foi enviado ao git ainda. Publicar sempre com o ok da operação (a trava do Claude barra sem ele).
+- **Fotos das motos gravadas em 17/11**: 50 fotos das 24 motos, uma por cor (JPEG oficial "3/4 direita" da
+  galeria de mídia da Yamaha, recortado e convertido para WebP; a operação preferiu JPEG ao PNG por ser mais leve).
+  Cópias em `.data/fotos-motos/` (fora do git), com a origem de cada uma em `origem-das-fotos.tsv`. Gravadas
+  direto na tabela `model_photos` (o painel não cuida de fotos). A da YZ250F 70th veio da operação pela conversa
+  (pequena, 366 px de largura: trocar se mandarem o arquivo original). A Crosser Z 27 ficou só com a cor Cinza (a operação informou que só existe em Pure Grey). Fotos de outro ano-modelo, por falta do exato na galeria: Factor
+  (2025), Factor DX preta (2025), Fazer 15 vermelha (2026), Crosser Z 26 vermelha (2025), WR 250 (WR250F 2023),
+  R3 branca (edição 70 anos), Ténéré 700 e ZR (quadros do giro 360°). A galeria só abre na aba em que a operação
+  entrou pelo portal da Yamaha (a aba precisa ser arrastada para o grupo "Claude" do Chrome).
+- **Ensaio oficial em 18/11 à tarde, logo antes da live**: é no site de verdade (pagamento real). Depois do
+  ensaio, rodar `ensaio:limpar` (exige status fora de "Ao vivo"; apaga pedidos, bloqueia motos, zera termômetro e
+  destaque) e conferir se as unidades voltaram a 103. Cópia dos dados da véspera em
+  `.data/copia-producao-2026-11-17-vespera-da-live.json`.
+- **Faltam**: descrição e ficha técnica das motos (site da Yamaha), devolver pelo Mercado Pago os dois pagamentos de teste de R$ 1
+  (transações 190022058102, Pix, e 189076085289, cartão), ajustar "Espectadores exibidos", conferir vídeo
+  automático no celular/iPhone.
 - Ajustes do designer feitos em 12/11: logo horizontal, cabeçalho fixo com "Voltar à live" na página da live, barra
   fixa de atalhos no painel, sem termômetro na reserva confirmada, seta própria nas listas.
 - **Ainda em aberto com o designer e o Pedro**: cores das motos; testeira de produtos/serviços no checkout (protótipo

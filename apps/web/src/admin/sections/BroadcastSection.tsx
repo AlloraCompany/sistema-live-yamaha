@@ -34,7 +34,6 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
       youtubeUrl: s.youtubeUrl ?? '',
       voucher: String(s.voucherCents / 100),
       offersUntil: toLocalInput(s.offersUntil),
-      holdMinutes: String(s.holdMinutes),
     };
   }
   async function save(patch: Parameters<typeof adminApi.patchLive>[0], okText: string) {
@@ -104,15 +103,6 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
           />
         </div>
         <Field id="p-vou" label="Valor do voucher (R$)" inputMode="decimal" value={form.voucher} onChange={set('voucher')} />
-        <Field
-          id="p-hold"
-          label="Reserva do Pix (minutos)"
-          inputMode="numeric"
-          value={form.holdMinutes}
-          onChange={set('holdMinutes')}
-         
-          hint="Tempo que a moto fica segurada esperando o Pix"
-        />
         <div className="span-all">
           <Field
             id="p-offers"
@@ -139,7 +129,7 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
                 // Sem prazo de fechamento no site: o gerente combina com o cliente pelo WhatsApp.
                 validUntil: null,
                 offersUntil: fromLocalInput(form.offersUntil),
-                holdMinutes: Number(form.holdMinutes) || 30,
+                // A reserva do Pix é fixa em 15 minutos (migration 003): não é mais configurável aqui.
                 // Sem depoimentos na loja (decisão de 16/11/2026): garante a lista vazia.
                 testimonials: [],
               },

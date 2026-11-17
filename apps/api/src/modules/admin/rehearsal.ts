@@ -25,7 +25,7 @@ export async function rehearsalSummary(db: Queryable): Promise<RehearsalSummary>
             (SELECT count(*)::int FROM orders) AS orders,
             (SELECT count(*)::int FROM orders WHERE status IN ('paid', 'completed', 'refund_pending')) AS "paidNotRefunded",
             (SELECT count(*)::int FROM payments) AS payments,
-            (SELECT count(*)::int FROM waitlist) AS waitlist,
+            ((SELECT count(*) FROM waitlist) + (SELECT COALESCE(sum(count), 0) FROM model_wants))::int AS waitlist,
             (SELECT offline_sales FROM live_settings WHERE id = 1) AS "offlineSales",
             (SELECT count(*)::int FROM models WHERE released_at IS NOT NULL) AS "releasedModels",
             (SELECT count(*)::int FROM units WHERE order_id IS NOT NULL) AS "unitsInUse"`,
@@ -53,9 +53,10 @@ export async function clearRehearsalData(db: Db, opts: { allowPaid: boolean }): 
     await tx.query(`DELETE FROM jobs`);
     await tx.query(`DELETE FROM webhook_events`);
     await tx.query(`DELETE FROM waitlist`);
+    await tx.query(`DELETE FROM model_wants`);
     await tx.query(`DELETE FROM offline_sale_events`);
     await tx.query(`DELETE FROM audit_log WHERE entity IN ('order', 'job', 'report')`);
-    await tx.query(`UPDATE live_settings SET offline_sales = 0, status = 'em_breve', updated_at = now() WHERE id = 1`);
+    await tx.query(`UPDATE live_settings SET offline_sales = 0, status = 'em_breve', featured_model_id = NULL, updated_at = now() WHERE id = 1`);
     await tx.query(`UPDATE models SET released_at = NULL, updated_at = now() WHERE released_at IS NOT NULL`);
     await tx.query(
       `INSERT INTO audit_log (actor_type, actor_id, action, entity, entity_id, data) VALUES ('system', 'ensaio', 'rehearsal.cleared', 'live', 'all', $1)`,

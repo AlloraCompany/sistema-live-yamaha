@@ -17,6 +17,12 @@ kill_timeout = 30
   RUN_WORKER_IN_PROCESS = "true"
   MAX_SSE_CLIENTS = "20000"
   DATABASE_POOL_MAX = "20"
+  # Tentativas de compra por minuto vindas do mesmo IP (o padrão do sistema é 20). No celular, muitos clientes
+  # da mesma operadora aparecem com o mesmo IP; com 20, compradores legítimos seriam barrados no pico (17/11).
+  ORDER_RATE_LIMIT_PER_MINUTE = "100"
+  # Limite geral por IP (padrão 600), sem contar a live, as fotos e os arquivos da loja. A tela de "aguardando o
+  # Pix" consulta o pedido a cada 3 s (20/min por comprador): com 600, ~30 compradores no mesmo IP já estouram.
+  API_RATE_LIMIT_PER_MINUTE = "3000"
   # Segredos (fly secrets set): DATABASE_URL, ADMIN_PASSWORD, MP_ACCESS_TOKEN, MP_PUBLIC_KEY, MP_WEBHOOK_SECRET.
   # Antes das credenciais do Mercado Pago (ensaio): fly secrets set ALLOW_START_WITHOUT_PAYMENTS=true
   # e remova antes da live (fly secrets unset ALLOW_START_WITHOUT_PAYMENTS).

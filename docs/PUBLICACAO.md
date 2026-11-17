@@ -41,7 +41,8 @@ Pré-requisito: conta no Fly.io criada pela empresa (com cartão). A ferramenta 
 2. Conferir e importar:
    - `npm run motos:importar -w @lle/api -- docs/planilha-motos.xlsx` mostra o que mudaria;
    - repetir com `--aplicar --desativar-outras` para gravar e tirar as motos de exemplo da loja.
-3. Fotos de cada moto pelo painel (bloco "Motos, preços e fotos"), escolhendo a cor.
+3. Fotos de cada moto: o painel não cuida mais de fotos (17/11); são gravadas direto no cadastro, uma por cor,
+   em WebP (cópias e origem em `.data/fotos-motos/`).
 4. Mercado Pago:
    - `fly secrets set MP_ACCESS_TOKEN=… MP_PUBLIC_KEY=… MP_WEBHOOK_SECRET=…`;
    - `fly secrets unset ALLOW_START_WITHOUT_PAYMENTS`;

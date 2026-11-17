@@ -5,10 +5,11 @@
 - [ ] Credenciais de **produção** do Mercado Pago no ambiente; webhook de **Pagamentos** cadastrado em
       *Suas integrações* apontando para `https://SEU_DOMINIO/api/webhooks/mercadopago`; assinatura secreta em `MP_WEBHOOK_SECRET`.
 - [ ] Ensaio completo com as credenciais de teste do MP: Pix e cartão (cartões de teste), devolução de voucher, comprovante e relatório.
-- [ ] Painel → **Motos, preços e fotos**: preços, entrada/parcela, fotos por cor, ficha técnica e **unidades disponíveis**
-      (botões + e −: o site só vende até esse número). Não há cadastro de chassi: quem confere chassi e unidade é
-      o gerente, no fechamento da compra.
-- [ ] Painel → **Transmissão**: link do YouTube, data/hora, validade do voucher, tempo de reserva do Pix e até quando as condições valem depois de encerrada.
+- [ ] Painel → **Motos da live** (atalho "Motos"): por moto, preço na live, **unidades disponíveis** (botões + e −:
+      o site só vende até esse número) e oferta ativa ou não. Nome, categoria, preço de tabela, cores, descrição e
+      fotos vêm do cadastro (planilha), fora do painel. O site não mostra entrada nem parcelas: isso é tratado na
+      venda da moto. Não há cadastro de chassi: quem confere chassi e unidade é o gerente, no fechamento.
+- [ ] Painel → **Transmissão**: link do YouTube, valor do voucher, espectadores exibidos e até quando as condições valem depois de encerrada. A reserva do Pix é fixa em 15 minutos.
 - [ ] Painel → **Termômetro**: metas e brindes. → **Lojas**: nome e WhatsApp do gerente de cada loja (único telefone que o cliente recebe).
 - [ ] Senha do painel (`ADMIN_PASSWORD`) forte e guardada num gerenciador de senhas; trocar a senha e reiniciar a API desconecta todos os aparelhos.
 - [ ] Dados do ensaio apagados com `npm run ensaio:limpar -w @lle/api -- --confirmar` (bloqueia as motos, zera o
@@ -25,6 +26,13 @@
 2. Libere cada moto com **Liberar agora** no instante do anúncio e **Bloquear** quando o apresentador passar para outra.
    Cada moto tem seu botão: dá para liberar uma e bloquear outra em sequência, sem esperar. Quem já estava pagando
    uma moto que foi bloqueada mantém a reserva até o fim do prazo do Pix.
+   Liberar uma moto já a coloca **em destaque** na loja (cartão "EM DESTAQUE AGORA NA LIVE", logo abaixo do
+   vídeo); bloquear tira. Para destacar outra moto sem liberar ou bloquear nada, use **Destacar na loja** na linha
+   dela (só uma fica em destaque por vez) e **Tirar destaque** para não deixar nenhuma.
+   Na mesma linha ficam o **preço na live** (digite e clique em Salvar) e as **unidades disponíveis** (+ e −).
+   Embaixo aparece "Estoque total (incluindo reserva): N": é quanto existe daquela moto ao todo, só para consulta
+   (o cliente nunca vê). Para colocar mais uma unidade à venda, use o **+**. Se as unidades no site passarem do
+   estoque total, o texto fica vermelho ("acima do total").
 3. O termômetro sobe sozinho a cada venda paga no site. **Ajuste manual do termômetro** (+ e −) muda o número na
    hora; o ajuste não fica abaixo de zero.
 4. **Reservas em tempo real** mostra cada voucher na hora, com a loja e a cor de preferência do cliente. O cliente

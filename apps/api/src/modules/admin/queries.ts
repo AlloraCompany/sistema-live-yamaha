@@ -31,6 +31,7 @@ export async function loadSettings(db: Queryable): Promise<AdminLiveSettings> {
     holdMinutes: s.hold_minutes,
     offlineSales: s.offline_sales,
     testimonials: s.testimonials,
+    featuredModelId: s.featured_model_id,
   };
 }
 
@@ -77,6 +78,7 @@ export async function loadAdminModels(db: Queryable): Promise<AdminModel[]> {
     releasedAt: m.released_at?.toISOString() ?? null,
     sort: m.sort,
     stock: { available: m.available, held: m.held, sold: m.sold },
+    stockTotal: m.stock_total,
     soldInLive: m.sold_live,
   }));
 }
@@ -133,7 +135,8 @@ export async function loadKpis(db: Queryable): Promise<AdminKpis> {
          (SELECT count(*) FROM models WHERE offer_active AND released_at IS NOT NULL)::int AS models_released,
          (SELECT count(*) FROM orders WHERE status IN ('paid', 'completed'))::int AS sold_site,
          (SELECT COALESCE(sum(voucher_amount_cents), 0) FROM orders WHERE status IN ('paid', 'completed'))::bigint AS deposit,
-         (SELECT count(*) FROM waitlist)::int AS waitlist,
+         -- "Eu quero!": toques nas motos esgotadas (o campo manteve o nome antigo, da lista de espera).
+         (SELECT COALESCE(sum(count), 0) FROM model_wants)::int AS waitlist,
          (SELECT count(*) FROM units u JOIN models m ON m.id = u.model_id WHERE u.status = 'available' AND m.offer_active)::int AS stock,
          (SELECT count(*) FROM orders WHERE status = 'pending_payment')::int AS pending,
          ls.offline_sales, ls.viewers_display

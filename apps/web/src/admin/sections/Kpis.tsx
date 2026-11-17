@@ -7,7 +7,7 @@ export function Kpis({ kpis }: { kpis: AdminKpis }) {
     [kpis.nextGoal ? `Faltam para ${kpis.nextGoal.prize}` : 'Metas', kpis.nextGoal ? String(kpis.nextGoal.remaining) : 'Batidas'],
     ['Reservas pagas no site', String(kpis.soldOnSite)],
     ['Sinal arrecadado', formatBRL(kpis.depositCents)],
-    ['Lista de espera', String(kpis.waitlist)],
+    ['Pedidos "Eu quero"', String(kpis.waitlist)],
     ['Estoque restante', String(kpis.stockAvailable)],
     ['Pix em andamento', String(kpis.pixInProgress)],
     ['Assistindo agora', formatInt(kpis.viewers)],

@@ -30,6 +30,8 @@ export interface PublicLive {
   showThermometer: boolean;
   holdMinutes: number;
   testimonials: Testimonial[];
+  /** Moto em destaque na loja (a que o apresentador está mostrando agora), escolhida no painel. */
+  featuredModelId: number | null;
 }
 
 export interface Spec {
@@ -199,6 +201,8 @@ export interface AdminLiveSettings {
   /** Ajuste manual do termômetro (soma às vendas do site). */
   offlineSales: number;
   testimonials: Testimonial[];
+  /** Moto em destaque na loja agora (botão "Destacar"; liberar uma moto também a destaca). */
+  featuredModelId: number | null;
 }
 
 export interface AdminUnit {
@@ -228,6 +232,8 @@ export interface AdminModel {
   releasedAt: string | null;
   sort: number;
   stock: { available: number; held: number; sold: number };
+  /** Estoque total da moto, contando o que ainda não foi para o site (só o painel mostra; o cliente nunca vê). */
+  stockTotal: number;
   soldInLive: number;
 }
 
@@ -261,6 +267,7 @@ export interface AdminKpis {
   offlineSales: number;
   nextGoal: { prize: string; remaining: number } | null;
   depositCents: number;
+  /** Toques em "Eu quero!" nas motos esgotadas (antes era a lista de espera com nome e WhatsApp). */
   waitlist: number;
   stockAvailable: number;
   pixInProgress: number;

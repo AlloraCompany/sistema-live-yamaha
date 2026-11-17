@@ -8,7 +8,7 @@ Os dublês existem apenas nos testes; o código de produção não tem modo simu
 
 | Comando | O que cobre |
 |---|---|
-| `npm test` | 11 testes do pacote compartilhado + 54 da API (unidade, fluxos HTTP, painel, planilha das motos, limpeza do ensaio) |
+| `npm test` | 11 testes do pacote compartilhado + 58 da API (unidade, fluxos HTTP, painel, planilha das motos, limpeza do ensaio) |
 | `npm run test:concurrency` | 9 cenários de disputa e pagamentos simultâneos (inclui 500 compradores escolhendo cor de preferência) |
 | `npm run test:load` | carga com API real em processo separado (ver abaixo) |
 
@@ -78,6 +78,44 @@ Relatórios completos em `tests/load/results/*.json`.
   conexões (como um balanceador faz com o backend). Em Linux, o `backlog: 4096` da API vale até `net.core.somaxconn`.
 - O teste não passa pelo Mercado Pago real nem pela internet. Antes da live, faça um ensaio em
   homologação com as credenciais de teste (ver [OPERACAO.md](OPERACAO.md)).
+
+## Carga contra o site publicado (`test/load/remote-load.ts`, 17/11/2026)
+
+Site no Fly (1 máquina `shared-cpu-2x`/2 GB em `gru`, Managed Postgres Basic), banco e Mercado Pago de produção,
+voucher em R$ 1. A carga saiu de um único computador, por uma internet residencial de 300 Mbps; o limite por IP
+foi afrouxado só durante o teste. Instruções no cabeçalho do script.
+
+| Fase | Resultado |
+|---|---|
+| 5.000 conexões SSE (400 novas por segundo) | 4.997 conectadas (3 `ECONNRESET`); o servidor contou 5.000. Máquina: 14% de CPU ocupada, 6% de steal, 1,5 GB livres |
+| Mudança no termômetro → 5.000 espectadores | p50 0,7–0,9 s · p99 1,3–2,0 s (inclui baixar 5.000 cópias pela mesma internet) |
+| Snapshot sem SSE (100 clientes, 10 s) | 1.553 req/s · p50 48 ms · p99 288 ms · 0 erros |
+| 1.000 compradores disputando 5 motos, com 3.859 espectadores conectados | 5 reservas, 995 "todas em pagamento", 0 erros · tudo em 5,8 s · p50 3,7 s · 5 Pix criados no Mercado Pago · máquina a 34% de CPU, 8% de steal |
+| Invariantes no banco | 0 violações |
+
+Com a segunda máquina ligada (2 × `shared-cpu-2x`, mesma noite):
+
+| Fase | Resultado |
+|---|---|
+| 5.000 conexões SSE | 5.000 conectadas, 0 erros; ficaram ~2.500 em cada máquina |
+| Mudança no termômetro → 5.000 espectadores nas duas máquinas | p50 0,6–1,0 s · p99 1,3–2,0 s; todos receberam |
+| 2 minutos com 5.000 ligados e uma mudança a cada 5 s | CPU ocupada 1% em cada máquina, steal 0–1%, carga ~0, 1,6 GB livres |
+
+Máquina compartilhada do Fly tem cota de 6,25% por vCPU e é freada quando gasta o saldo de rajada (até 500 s).
+Com os espectadores ligados o uso fica em 1%, bem abaixo da cota: o saldo não é consumido fora das rajadas de
+compra, que duram segundos.
+
+O que o teste mostrou:
+
+- A máquina da API não foi o gargalo em nenhuma fase. Na rajada de compra o tempo é das idas e vindas ao banco
+  (20 conexões no pool, ~10 consultas por tentativa) e da fila do próprio gerador de carga (256 conexões).
+- Abrir 1.000 conexões por segundo a partir de um computador só falhou em 1.141 de 5.000 com a máquina ociosa
+  (6% de CPU): limite de quem testa, não do servidor. Com 400 por segundo, todas entraram.
+- Cada máquina aceita até ~10 mil conexões (limite de 10.240 arquivos abertos), abaixo do `MAX_SSE_CLIENTS`.
+- O Mercado Pago avisa cada pagamento por mais de um caminho: o aviso assinado é aceito e os outros são
+  recusados com 401 ("assinatura inválida" no log). Não afeta a confirmação das vendas.
+- Não coberto: pagamentos aprovados em massa (os webhooks reais dependem do Mercado Pago), carga vinda de
+  muitos endereços diferentes e uso de CPU do banco gerenciado (não é visível pela máquina da API).
 
 ## Verificação manual da interface
 

@@ -83,6 +83,11 @@ export const IconDownload = (p: P) => (
     <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
   </Svg>
 );
+export const IconChevronRight = (p: P) => (
+  <Svg {...p}>
+    <path d="M9 6l6 6-6 6" />
+  </Svg>
+);
 export const IconChevronUp = (p: P) => (
   <Svg strokeWidth={2.6} {...p}>
     <path d="M6 15l6-6 6 6" />

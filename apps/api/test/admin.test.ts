@@ -117,6 +117,53 @@ describe('estoque', () => {
     expect(remove.json().error.code).toBe('NO_FREE_UNIT');
   });
 
+  it('estoque total: aparece só no painel e não muda quando as unidades disponíveis mudam', async () => {
+    const { cookie } = await admin();
+    const mine = async () => (await dashboard(cookie)).json().models.find((m: { id: number }) => m.id === modelId);
+
+    const set = await h.app.inject({ method: 'PATCH', url: `/api/admin/models/${modelId}`, headers: { cookie }, payload: { stockTotal: 12 } });
+    expect(set.statusCode).toBe(200);
+    expect((await mine()).stockTotal).toBe(12);
+    // O cliente nunca vê o estoque total.
+    expect(JSON.stringify(await h.snapshot())).not.toMatch(/stockTotal|stock_total|reserve/);
+
+    const add = await h.app.inject({ method: 'POST', url: `/api/admin/models/${modelId}/units`, headers: { cookie }, payload: { quantity: 1 } });
+    expect(add.json()).toEqual({ added: 1 });
+    expect((await mine()).stockTotal).toBe(12);
+
+    const neg = await h.app.inject({ method: 'PATCH', url: `/api/admin/models/${modelId}`, headers: { cookie }, payload: { stockTotal: -1 } });
+    expect(neg.statusCode).toBe(422);
+  });
+
+  it('destaque: o botão escolhe a moto, liberar destaca e bloquear tira o destaque', async () => {
+    const { cookie } = await admin();
+    const post = (url: string, payload: object) => h.app.inject({ method: 'POST', url: `/api/admin${url}`, headers: { cookie }, payload });
+    const featured = async () => (await h.snapshot()).live.featuredModelId;
+
+    expect((await post(`/models/${modelId}/feature`, { featured: true })).json()).toEqual({ featuredModelId: modelId });
+    expect(await featured()).toBe(modelId);
+    expect((await dashboard(cookie)).json().settings.featuredModelId).toBe(modelId);
+
+    expect((await post(`/models/${modelId}/feature`, { featured: false })).statusCode).toBe(200);
+    expect(await featured()).toBeNull();
+
+    // Liberar é o momento do anúncio: a moto entra em destaque sozinha; bloquear tira.
+    expect((await post(`/models/${modelId}/release`, { released: false })).statusCode).toBe(200);
+    expect((await post(`/models/${modelId}/release`, { released: true })).statusCode).toBe(200);
+    expect(await featured()).toBe(modelId);
+    expect((await post(`/models/${modelId}/release`, { released: false })).statusCode).toBe(200);
+    expect(await featured()).toBeNull();
+    expect((await post(`/models/${modelId}/release`, { released: true })).statusCode).toBe(200);
+
+    // Moto que não existe não vira destaque; moto fora da loja perde o destaque.
+    expect((await post(`/models/999999/feature`, { featured: true })).statusCode).toBe(404);
+    const off = await h.app.inject({ method: 'PATCH', url: `/api/admin/models/${modelId}`, headers: { cookie }, payload: { offerActive: false } });
+    expect(off.statusCode).toBe(200);
+    expect(await featured()).toBeNull();
+    expect((await dashboard(cookie)).json().settings.featuredModelId).toBeNull();
+    await h.app.inject({ method: 'PATCH', url: `/api/admin/models/${modelId}`, headers: { cookie }, payload: { offerActive: true } });
+  });
+
   it('chassi é único', async () => {
     const { cookie } = await admin();
     const a = await h.app.inject({ method: 'POST', url: `/api/admin/models/${modelId}/units`, headers: { cookie }, payload: { chassis: '9C6RG3150R0012345' } });
@@ -321,6 +368,25 @@ describe('painel', () => {
     expect((await h.app.inject({ method: 'PATCH', url: '/api/admin/stores/99', headers: { cookie }, payload: { name: 'Outra' } })).statusCode).toBe(404);
   });
 
+  it('reserva do Pix é fixa em 15 minutos: o padrão do banco é 15 e o painel não consegue mudar', async () => {
+    const { cookie } = await admin();
+    const def = await h.ctx.db.query<{ d: string }>(
+      `SELECT column_default AS d FROM information_schema.columns WHERE table_name = 'live_settings' AND column_name = 'hold_minutes'`,
+    );
+    expect(def.rows[0]!.d).toBe('15');
+
+    const before = (await h.ctx.db.query<{ hold_minutes: number; status: string }>(`SELECT hold_minutes, status FROM live_settings`)).rows[0]!;
+    // O campo saiu do painel; mesmo que alguém mande o valor, ele é ignorado.
+    const r = await h.app.inject({ method: 'PATCH', url: '/api/admin/live', headers: { cookie }, payload: { holdMinutes: 90, viewers: 7 } });
+    expect(r.statusCode).toBe(200);
+    expect((await h.ctx.db.query<{ hold_minutes: number }>(`SELECT hold_minutes FROM live_settings`)).rows[0]!.hold_minutes).toBe(before.hold_minutes);
+    const only = await h.app.inject({ method: 'PATCH', url: '/api/admin/live', headers: { cookie }, payload: { holdMinutes: 90 } });
+    expect(only.statusCode).toBe(422); // nada para salvar
+
+    // Salvar pelo painel sem link do YouTube volta a live para "Em breve": devolve o status para os próximos testes.
+    await h.ctx.db.query(`UPDATE live_settings SET status = $1`, [before.status]);
+  });
+
   it('lojas podem ser adicionadas e removidas pelo painel; telefone fixo também vale como contato', async () => {
     const { cookie } = await admin();
     const post = (payload: Record<string, unknown>) => h.app.inject({ method: 'POST', url: '/api/admin/stores', headers: { cookie }, payload });
@@ -360,6 +426,23 @@ describe('painel', () => {
 
     const official = await h.app.inject({ method: 'GET', url: '/painel', headers: { host: 'live.exemplo.test' } });
     expect(official.statusCode).not.toBe(302);
+  });
+});
+
+describe('"Eu quero!" na moto esgotada', () => {
+  it('soma um pedido por toque, sem dados do cliente, e o painel mostra a contagem por moto', async () => {
+    const { cookie } = await admin();
+    const { rows } = await h.ctx.db.query<{ slug: string }>(`SELECT slug FROM models WHERE id = $1`, [modelId]);
+    await h.app.inject({ method: 'POST', url: `/api/admin/models/${modelId}/release`, headers: { cookie }, payload: { released: true } });
+    const want = (slug: string) => h.app.inject({ method: 'POST', url: `/api/models/${slug}/want`, payload: {} });
+    expect((await want(rows[0]!.slug)).statusCode).toBe(200);
+    expect((await want(rows[0]!.slug)).statusCode).toBe(200);
+    expect((await want('moto-que-nao-existe')).statusCode).toBe(404);
+
+    const list = (await h.app.inject({ method: 'GET', url: '/api/admin/wants', headers: { cookie } })).json();
+    expect(list).toEqual([expect.objectContaining({ model_id: modelId, count: 2 })]);
+    expect((await dashboard(cookie)).json().kpis.waitlist).toBe(2);
+    expect((await h.app.inject({ method: 'GET', url: '/api/admin/wants' })).statusCode).toBe(401);
   });
 });
 

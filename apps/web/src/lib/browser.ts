@@ -1,4 +1,20 @@
+import { useEffect, useState } from 'react';
 import { onlyDigits } from '@lle/shared';
+
+const MOBILE = '(max-width: 1023px)';
+
+/** Celular e tablet (o mesmo corte de 1024px da folha de estilos): a loja usa o desenho compacto. */
+export function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(() => window.matchMedia(MOBILE).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE);
+    const update = () => setMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return mobile;
+}
 
 /** "Chamar amigos para a live": compartilhamento nativo no celular, cópia do link no desktop. */
 export async function shareLive(): Promise<'shared' | 'copied' | 'cancelled'> {

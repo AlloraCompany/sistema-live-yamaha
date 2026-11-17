@@ -75,6 +75,20 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
       .send(rows[0].bytes);
   });
 
+  // "Eu quero!": um toque na moto esgotada, sem dados pessoais. Só soma na contagem da moto.
+  // O limite por IP é folgado porque, no celular, muita gente sai pela mesma rede da operadora.
+  app.post('/api/models/:slug/want', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req) => {
+    const { slug } = parse(z.object({ slug: z.string().min(1).max(80) }), req.params);
+    const { rowCount } = await ctx.db.query(
+      `INSERT INTO model_wants (model_id, count)
+            SELECT id, 1 FROM models WHERE slug = $1 AND offer_active AND released_at IS NOT NULL
+       ON CONFLICT (model_id) DO UPDATE SET count = model_wants.count + 1, updated_at = now()`,
+      [slug],
+    );
+    if (!rowCount) throw Errors.notFound('Moto');
+    return { ok: true };
+  });
+
   app.post('/api/waitlist', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req) => {
     const input = parse(waitlistSchema, req.body);
     const { rows } = await ctx.db.query<{ id: number }>(`SELECT id FROM models WHERE slug = $1`, [input.modelSlug]);

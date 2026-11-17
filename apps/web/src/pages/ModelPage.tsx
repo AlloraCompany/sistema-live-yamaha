@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { formatBRL, maskPhoneInput, type PublicModel } from '@lle/shared';
+import { formatBRL, type PublicModel } from '@lle/shared';
 import { BackLink, Steps, StoreLayout } from '../components/Layout';
-import { availabilityBadge, closedSalesNote, financingLine } from '../components/MotoCard';
+import { availabilityBadge, closedSalesNote, WantButton } from '../components/MotoCard';
 import { IconLock } from '../components/Icons';
 import { useLive, useThermometer } from '../lib/live';
-import { api, ApiError } from '../lib/api';
 import { NotFound } from './NotFound';
 
 function Gallery({ m }: { m: PublicModel }) {
@@ -48,57 +47,6 @@ function Gallery({ m }: { m: PublicModel }) {
   );
 }
 
-function Waitlist({ m }: { m: PublicModel }) {
-  const [name, setName] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [state, setState] = useState<'idle' | 'sending' | 'done'>('idle');
-  const [error, setError] = useState<string | null>(null);
-  if (state === 'done') return <div className="alert alert--ok">Pronto! Se alguma unidade voltar, a equipe chama você no WhatsApp.</div>;
-  return (
-    <form
-      className="card"
-      style={{ padding: 16, gap: 10 }}
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setState('sending');
-        setError(null);
-        try {
-          await api('/api/waitlist', { method: 'POST', json: { modelSlug: m.slug, name, whatsapp } });
-          setState('done');
-        } catch (err) {
-          setError(err instanceof ApiError ? err.message : 'Não foi possível entrar na lista.');
-          setState('idle');
-        }
-      }}
-    >
-      <strong style={{ color: 'var(--ink)' }}>Entrar na lista de espera</strong>
-      <div className="grid-2">
-        <div className="field">
-          <label htmlFor="w-name">Nome</label>
-          <input id="w-name" className="input" required minLength={2} value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <div className="field">
-          <label htmlFor="w-zap">WhatsApp</label>
-          <input
-            id="w-zap"
-            className="input"
-            type="tel"
-            inputMode="tel"
-            required
-            placeholder="(48) 99999-9999"
-            value={whatsapp}
-            onChange={(e) => setWhatsapp(maskPhoneInput(e.target.value))}
-          />
-        </div>
-      </div>
-      {error && <div className="alert alert--error">{error}</div>}
-      <button className="btn btn--outline btn--block" disabled={state === 'sending'}>
-        Avise-me se uma unidade voltar
-      </button>
-    </form>
-  );
-}
-
 export function ModelPage() {
   const { slug } = useParams();
   const { snapshot } = useLive();
@@ -109,7 +57,6 @@ export function ModelPage() {
 
   const badge = availabilityBadge(m);
   const savings = m.priceLiveCents ? m.priceTableCents - m.priceLiveCents : 0;
-  const fin = financingLine(m);
   const voucher = formatBRL(snapshot.live.voucherCents);
   const specs = [...m.specs, ...(m.colors.length ? [{ label: 'Cores', value: m.colors.join(', ') }] : [])];
 
@@ -139,12 +86,6 @@ export function ModelPage() {
               {savings > 0 && (
                 <div>
                   <span className="badge badge--green">Economia de {formatBRL(savings)} na live</span>
-                </div>
-              )}
-              {fin && (
-                <div className="fin-text" style={{ lineHeight: 1.5 }}>
-                  {fin}
-                  {m.rateNote && ` · ${m.rateNote}`} · sujeito à aprovação de crédito
                 </div>
               )}
             </>
@@ -187,8 +128,8 @@ export function ModelPage() {
             </div>
           ) : (
             <>
-              <div className="alert alert--warn">Esgotada nesta live.</div>
-              <Waitlist m={m} />
+              <div className="alert alert--warn">Esgotada nesta live. Quer que ela volte? Avise com um toque, sem cadastro.</div>
+              <WantButton m={m} />
             </>
           )}
 

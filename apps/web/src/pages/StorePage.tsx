@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router';
 import { formatBRL, formatDate, formatInt, formatTime } from '@lle/shared';
 import { StoreLayout } from '../components/Layout';
 import { LivePill } from '../components/SiteChrome';
-import { MotoCard } from '../components/MotoCard';
-import { Thermometer } from '../components/Thermometer';
+import { MotoCard, MotoFeatured, MotoListMobile } from '../components/MotoCard';
+import { ThermoCard } from '../components/Thermometer';
 import { IconEye, IconExternal, IconGift, IconLive, IconPlay } from '../components/Icons';
+import { Link, useLocation } from 'react-router';
+import { useIsMobile } from '../lib/browser';
 import { useLive, useNow, useThermometer } from '../lib/live';
 
 /** "19/11 às 10h" (10h30 quando há minutos), no horário de Brasília. */
@@ -152,6 +153,23 @@ function VoucherCard() {
   );
 }
 
+/** Voucher no celular: uma faixa só, com o atalho para o "Como funciona". */
+function VoucherStrip() {
+  const { snapshot } = useLive();
+  if (!snapshot) return null;
+  return (
+    <div className="vstrip">
+      <div className="vstrip__v">
+        <small>VOUCHER</small>
+        <b>{formatBRL(snapshot.live.voucherCents)}</b>
+      </div>
+      <p>
+        Garante o preço da live e é abatido da entrada. <Link to="/#como-funciona">Como funciona</Link>
+      </p>
+    </div>
+  );
+}
+
 /** "A, B ou C" com os nomes das lojas do painel. */
 function storeList(names: string[]): string {
   if (names.length <= 1) return names[0] ?? '';
@@ -173,6 +191,7 @@ export function StorePage() {
   const { snapshot, error } = useLive();
   const now = useNow(30_000);
   const location = useLocation();
+  const mobile = useIsMobile();
   const ready = snapshot !== null;
   const scrolledFor = useRef<string | null>(null);
 
@@ -215,19 +234,32 @@ export function StorePage() {
   const models = snapshot?.models ?? [];
   const released = models.filter((m) => m.released).length;
 
-  return (
-    <StoreLayout mobileBar={false} stickyHeader backToLive={playerHidden}>
-      <div className="hero">
-        <div className="hero__meta">
-          <span className="pill-blue">
-            <IconLive />
-            {live?.status === 'ao_vivo' ? 'AO VIVO NO YOUTUBE' : live?.status === 'encerrada' ? 'LIVE ENCERRADA' : 'LIVE NO YOUTUBE'}
-          </span>
-        </div>
-        <h1 className="display hero__title">
-          Live Limpa Estoque <span className="hl">Yamaha</span>
-        </h1>
+  const featured = live?.featuredModelId ? models.find((m) => m.id === live.featuredModelId) : undefined;
+
+  const heroBlock = (cls: string) => (
+    <div className={cls}>
+      <div className="hero__meta">
+        <span className="pill-blue">
+          <IconLive />
+          {live?.status === 'ao_vivo' ? 'AO VIVO NO YOUTUBE' : live?.status === 'encerrada' ? 'LIVE ENCERRADA' : 'LIVE NO YOUTUBE'}
+        </span>
       </div>
+      <h1 className="display hero__title">
+        Live Limpa Estoque <span className="hl">Yamaha</span>
+      </h1>
+    </div>
+  );
+
+  return (
+    <StoreLayout
+      mobileBar={false}
+      stickyHeader
+      backToLive={playerHidden}
+      // No computador o título fica acima das duas colunas, para o termômetro começar na altura do vídeo.
+      top={mobile ? undefined : heroBlock('hero')}
+    >
+      {/* No celular o vídeo fica colado no cabeçalho: a logo já diz o nome da live (o título continua para leitores de tela). */}
+      {mobile && heroBlock('sr-only')}
 
       <div ref={playerBox}>
         <Player />
@@ -251,15 +283,29 @@ export function StorePage() {
         )}
       </div>
 
-      <SoldBanner />
-      <div className="mobile-only">
-        <Thermometer variant="inline" />
-      </div>
-      <VoucherCard />
+      {/* Moto em destaque (escolhida no painel): logo abaixo do vídeo, no celular e no computador. */}
+      {featured && <MotoFeatured m={featured} wide={!mobile} />}
+
+      {mobile ? (
+        <>
+          <ThermoCard />
+          <VoucherStrip />
+        </>
+      ) : (
+        <>
+          <SoldBanner />
+          <VoucherCard />
+        </>
+      )}
 
       <div id="motos" className="section-head">
         <h2 className="display">Motos da live</h2>
-        {models.length > 0 && (
+        {models.length > 0 && mobile && (
+          <span className="mcount">
+            {released} de {models.length} {released === 1 ? 'liberada' : 'liberadas'}
+          </span>
+        )}
+        {models.length > 0 && !mobile && (
           <p>
             <strong>
               {released} de {models.length} {released === 1 ? 'liberada' : 'liberadas'} até agora.
@@ -277,16 +323,21 @@ export function StorePage() {
       )}
       {error && <div className="empty">Não foi possível carregar as motos. Atualize a página em instantes.</div>}
       {snapshot && models.length === 0 && <div className="empty">As motos da live aparecem aqui em breve.</div>}
-      <div className="grid-motos">
-        {live && models.map((m) => <MotoCard key={m.id} m={m} live={live} now={now} />)}
-      </div>
+      {live && mobile && models.length > 0 && <MotoListMobile models={models} live={live} />}
+      {live && !mobile && (
+        <div className="grid-motos">
+          {models.map((m) => (
+            <MotoCard key={m.id} m={m} live={live} now={now} />
+          ))}
+        </div>
+      )}
 
       <section id="como-funciona" className="how">
         <h2 className="display">
           Como <span>funciona</span>
         </h2>
         <div className="how__grid">
-          {HOW(live?.holdMinutes ?? 30, snapshot?.stores.map((s) => s.name) ?? []).map(([title, text], i) => (
+          {HOW(live?.holdMinutes ?? 15, snapshot?.stores.map((s) => s.name) ?? []).map(([title, text], i) => (
             <div key={title} className={`how__step ${i === 3 ? 'how__step--hl' : ''}`}>
               <div className="how__num">{String(i + 1).padStart(2, '0')}</div>
               <div>

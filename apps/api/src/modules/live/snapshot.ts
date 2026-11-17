@@ -16,6 +16,7 @@ interface SettingsRow {
   hold_minutes: number;
   offline_sales: number;
   testimonials: Testimonial[];
+  featured_model_id: number | null;
 }
 
 interface ModelRow {
@@ -138,6 +139,8 @@ export async function buildSnapshot(db: Queryable, version: number): Promise<Liv
       showThermometer: s.show_thermometer,
       holdMinutes: s.hold_minutes,
       testimonials: s.testimonials,
+      // Só vale se a moto continua na loja (oferta ativa).
+      featuredModelId: models.some((m) => m.id === s.featured_model_id) ? s.featured_model_id : null,
     },
     models,
     stores: storesRes.rows,

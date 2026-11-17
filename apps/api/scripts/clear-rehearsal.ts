@@ -27,7 +27,7 @@ try {
   const s = await rehearsalSummary(db.pool);
   console.log(`Banco: ${new URL(url).host}${new URL(url).pathname}`);
   console.log(`Live: ${s.liveStatus} · pedidos: ${s.orders} (pagos sem devolução: ${s.paidNotRefunded}) · pagamentos: ${s.payments}`);
-  console.log(`Lista de espera: ${s.waitlist} · ajuste manual do termômetro: ${s.offlineSales} · motos liberadas: ${s.releasedModels} · unidades em uso: ${s.unitsInUse}`);
+  console.log(`"Eu quero" e lista de espera: ${s.waitlist} · ajuste manual do termômetro: ${s.offlineSales} · motos liberadas: ${s.releasedModels} · unidades em uso: ${s.unitsInUse}`);
   if (!process.argv.includes('--confirmar')) {
     console.log('\nNada foi apagado. Para apagar, rode de novo com --confirmar.');
   } else {

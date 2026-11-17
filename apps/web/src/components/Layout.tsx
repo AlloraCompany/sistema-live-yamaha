@@ -14,8 +14,11 @@ export function StoreLayout({
   thermometer = true,
   stickyHeader = false,
   backToLive = false,
+  top,
 }: {
   children: ReactNode;
+  /** Bloco acima das duas colunas (título da live no computador): o termômetro começa junto com o vídeo. */
+  top?: ReactNode;
   mobileBar?: boolean;
   thermometer?: boolean;
   /** Cabeçalho fixo no topo (página da live). */
@@ -26,6 +29,7 @@ export function StoreLayout({
   return (
     <div className={`page ${stickyHeader ? 'page--sticky-header' : ''}`}>
       <SiteHeader sticky={stickyHeader} backToLive={backToLive} />
+      {top && <div className="shell-top">{top}</div>}
       <div className="shell">
         <main className="shell__main">{children}</main>
         {thermometer && (
