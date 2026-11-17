@@ -72,7 +72,8 @@ export async function buildSnapshot(db: Queryable, version: number): Promise<Liv
         WHERE m.offer_active
         ORDER BY m.sort, m.id`,
     ),
-    db.query<{ id: number; name: string }>(`SELECT id, name FROM stores WHERE active ORDER BY sort, id`),
+    // Ordem alfabética: é a ordem em que o cliente vê as lojas no checkout.
+    db.query<{ id: number; name: string }>(`SELECT id, name FROM stores WHERE active ORDER BY lower(name), id`),
     db.query<Goal>(`SELECT id, threshold, prize, description FROM goals ORDER BY threshold`),
     db.query<{ sold: number; last_paid: Date | null }>(
       `SELECT count(*)::int AS sold, max(paid_at) AS last_paid FROM orders WHERE status IN ('paid', 'completed')`,

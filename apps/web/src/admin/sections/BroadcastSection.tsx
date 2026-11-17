@@ -30,7 +30,6 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
 
   function init() {
     return {
-      startsAt: toLocalInput(s.startsAt),
       viewers: String(s.viewers),
       youtubeUrl: s.youtubeUrl ?? '',
       voucher: String(s.voucherCents / 100),
@@ -91,7 +90,6 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
             Sem link do YouTube a live fica "Em breve". Ao salvar o link, ela passa sozinha para "Ao vivo". "Encerrada" é só por clique.
           </span>
         </div>
-        <Field id="p-date" label="Data e hora" type="datetime-local" value={form.startsAt} onChange={set('startsAt')} />
         <Field id="p-view" label="Espectadores exibidos" inputMode="numeric" value={form.viewers} onChange={set('viewers')} />
       </div>
       <div className="grid-4">
@@ -135,7 +133,6 @@ export function BroadcastSection({ data, onChange }: SectionProps) {
           onClick={() =>
             void save(
               {
-                startsAt: fromLocalInput(form.startsAt),
                 viewers: Number(form.viewers.replace(/\D/g, '')) || 0,
                 youtubeUrl: form.youtubeUrl || null,
                 voucherCents: Math.round(Number(form.voucher.replace(/\./g, '').replace(',', '.')) * 100),

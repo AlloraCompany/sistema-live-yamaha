@@ -160,7 +160,7 @@ export async function loadKpis(db: Queryable): Promise<AdminKpis> {
 }
 
 export async function loadStores(db: Queryable): Promise<AdminStore[]> {
-  const { rows } = await db.query<AdminStore>(`SELECT id, name, whatsapp FROM stores WHERE active ORDER BY sort, id`);
+  const { rows } = await db.query<AdminStore>(`SELECT id, name, whatsapp FROM stores WHERE active ORDER BY lower(name), id`);
   return rows;
 }
 

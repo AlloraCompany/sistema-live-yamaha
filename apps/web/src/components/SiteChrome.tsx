@@ -61,6 +61,9 @@ export function SiteHeader({ sticky = false, backToLive = false }: { sticky?: bo
 }
 
 export function SiteFooter() {
+  const { snapshot } = useLive();
+  // Os nomes das lojas vêm do painel (seção Lojas): renomear lá muda aqui.
+  const stores = snapshot?.stores.map((s) => s.name) ?? [];
   return (
     <footer className="site-footer">
       <div className="site-footer__inner">
@@ -70,7 +73,8 @@ export function SiteFooter() {
           <img src="/brand/geracao-white.png" alt="Geração" style={{ height: 22, width: 'auto' }} />
         </div>
         <div className="site-footer__text">
-          <strong>Geração Yamaha</strong> · Via Expressa · Centro · Sul da Ilha · Florianópolis/SC
+          <strong>Geração Yamaha</strong>
+          {stores.map((name) => ` · ${name}`).join('')}
           <br />
           Pagamentos processados pelo Mercado Pago · <Link to="/termo-do-voucher" style={{ color: '#C4C4C4' }}>Termo do voucher</Link>
         </div>

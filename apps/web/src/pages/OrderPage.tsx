@@ -219,7 +219,8 @@ function Pending({ order, token, skewMs, onChange }: { order: OrderView; token: 
 function Confirmed({ order, token }: { order: OrderView; token: string }) {
   const thermo = useThermometer();
   const toast = useToast();
-  // Único telefone divulgado: o do gerente da loja de preferência. Loja sem número fica sem o botão.
+  // Único telefone divulgado: o da loja de preferência (é o do gerente, mas o cliente vê só "contato da loja").
+  // Loja sem número fica sem o botão.
   const storePhone = order.storeWhatsapp;
   const waMessage =
     `Acabei de garantir o meu voucher ${order.code} da Live Limpa Estoque para a ${order.model.name}` +
@@ -299,13 +300,13 @@ function Confirmed({ order, token }: { order: OrderView; token: string }) {
           <h2>O que acontece agora</h2>
           {[
             storePhone ? (
-              <>Chame o gerente da loja {order.store.name} no WhatsApp pelo botão abaixo e mande o comprovante ao lado.</>
+              <>Chame a loja {order.store.name} no WhatsApp pelo botão abaixo e mande o comprovante ao lado.</>
             ) : (
               <>A equipe da loja {order.store.name} chama você no WhatsApp. Tenha o comprovante ao lado em mãos.</>
             ),
             <>Envie RG ou CNH e comprovante de renda pelo WhatsApp para a análise de crédito.</>,
             <>
-              Com o crédito aprovado, o gerente combina com você o fechamento da compra e a retirada na loja <strong>{order.store.name}</strong>.
+              Com o crédito aprovado, a loja <strong>{order.store.name}</strong> combina com você o fechamento da compra e a retirada.
             </>,
           ].map((t, i) => (
             <div key={i} className="next-step">
@@ -334,7 +335,7 @@ function Confirmed({ order, token }: { order: OrderView; token: string }) {
             <>
               <a className="btn btn--whatsapp btn--block btn--lg" style={{ fontSize: 14 }} href={whatsappLink(storePhone, waMessage)} target="_blank" rel="noopener noreferrer">
                 <img src="/brand/whatsapp.png" alt="" className="wa-icon" />
-                Falar com o gerente da loja {order.store.name}
+                Falar com a loja {order.store.name} no WhatsApp
               </a>
               <div className="small center">
                 Se o link não abrir, mande mensagem para <strong style={{ color: 'var(--ink)' }}>{formatBrPhone(storePhone)}</strong>.

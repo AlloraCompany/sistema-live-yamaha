@@ -53,7 +53,14 @@ const method = (m: PaymentMethod | null) => (m === 'card' ? 'Cartão' : m === 'p
 const reais = (cents: number) => cents / 100;
 
 async function loadScope(db: Queryable, scope: ReportScope) {
-  const stores = (await db.query<{ id: number; name: string }>(`SELECT id, name FROM stores ORDER BY sort, id`)).rows;
+  // Lojas da lista atual, mais as removidas que ainda têm pedidos (para nenhuma venda ficar fora do resumo).
+  const stores = (
+    await db.query<{ id: number; name: string }>(
+      `SELECT s.id, s.name FROM stores s
+        WHERE s.active OR EXISTS (SELECT 1 FROM orders o WHERE o.store_id = s.id)
+        ORDER BY lower(s.name), s.id`,
+    )
+  ).rows;
   const store = scope.storeId === null ? null : stores.find((s) => s.id === scope.storeId);
   if (store === undefined) throw Errors.notFound('Loja');
   const orders = (

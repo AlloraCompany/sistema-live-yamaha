@@ -53,6 +53,9 @@ export const adminApi = {
   waitlist: () => api<{ id: number; name: string; whatsapp: string; created_at: string; model_name: string }[]>(`${base}/waitlist`),
   patchStore: (id: number, s: { name: string; whatsapp: string | null }) =>
     api<AdminStore[]>(`${base}/stores/${id}`, { method: 'PATCH', json: s }),
+  createStore: (s: { name: string; whatsapp: string | null }) =>
+    api<{ id: number; stores: AdminStore[] }>(`${base}/stores`, { method: 'POST', json: s }),
+  removeStore: (id: number) => api<AdminStore[]>(`${base}/stores/${id}`, { method: 'DELETE' }),
   createConsultant: (c: Omit<Consultant, 'id'>) => api<Consultant[]>(`${base}/consultants`, { method: 'POST', json: c }),
   patchConsultant: (id: number, c: Omit<Consultant, 'id'>) => api<Consultant[]>(`${base}/consultants/${id}`, { method: 'PATCH', json: c }),
   retryJob: (id: number) => api(`${base}/jobs/${id}/retry`, { method: 'POST', json: {} }),

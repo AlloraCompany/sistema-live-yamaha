@@ -545,6 +545,40 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       return loadStores(db.pool);
     });
 
+    // Loja nova. Se já existiu uma com o mesmo nome e foi removida, ela volta (os pedidos antigos continuam nela).
+    app.post('/stores', async (req, reply) => {
+      const s = parse(storeSchema, req.body);
+      const slug = slugify(s.name);
+      if (!slug) throw Errors.validation('Informe o nome da loja.');
+      const id = await db.tx(async (tx) => {
+        const same = (await tx.query<{ id: number; active: boolean }>(`SELECT id, active FROM stores WHERE slug = $1 FOR UPDATE`, [slug])).rows[0];
+        if (same?.active) throw Errors.validation('Já existe uma loja com este nome.');
+        const row = same
+          ? await tx.query<{ id: number }>(`UPDATE stores SET name = $2, whatsapp = $3, active = true WHERE id = $1 RETURNING id`, [same.id, s.name, s.whatsapp])
+          : await tx.query<{ id: number }>(
+              `INSERT INTO stores (slug, name, whatsapp, sort) VALUES ($1, $2, $3, (SELECT COALESCE(max(sort), 0) + 1 FROM stores)) RETURNING id`,
+              [slug, s.name, s.whatsapp],
+            );
+        await audit(tx, ADMIN, 'store.created', 'store', row.rows[0]!.id, s);
+        return row.rows[0]!.id;
+      });
+      reply.status(201);
+      return { id, stores: await loadStores(db.pool) };
+    });
+
+    // Remover = tirar da lista do checkout. A loja não é apagada: os pedidos já feitos nela continuam no relatório.
+    app.delete('/stores/:id', async (req) => {
+      const { id } = parse(idParam, req.params);
+      await db.tx(async (tx) => {
+        const { rows } = await tx.query<{ id: number }>(`SELECT id FROM stores WHERE active FOR UPDATE`);
+        if (!rows.some((r) => r.id === id)) throw Errors.notFound('Loja');
+        if (rows.length === 1) throw new AppError('LAST_STORE', 'A loja precisa de pelo menos uma loja para o cliente escolher.', 409);
+        await tx.query(`UPDATE stores SET active = false WHERE id = $1`, [id]);
+        await audit(tx, ADMIN, 'store.removed', 'store', id);
+      });
+      return loadStores(db.pool);
+    });
+
     /* ---------- Equipe ---------- */
 
     app.post('/consultants', async (req) => {

@@ -28,6 +28,37 @@ export function StoresSection({ data, onChange }: SectionProps) {
     setRows((r) => ({ ...r, [id]: { ...r[id]!, [k]: v } }));
   };
 
+  const [fresh, setFresh] = useState<Row>({ name: '', whatsapp: '' });
+
+  async function run(id: number, fn: () => Promise<unknown>, ok: string) {
+    setBusy(id);
+    setMsg(null);
+    try {
+      await fn();
+      await onChange();
+      setMsg({ ok: true, text: ok });
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof ApiError ? err.message : 'Falha ao salvar.' });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const add = () =>
+    run(
+      -1,
+      async () => {
+        await adminApi.createStore({ name: fresh.name.trim(), whatsapp: fresh.whatsapp.trim() || null });
+        setFresh({ name: '', whatsapp: '' });
+      },
+      `Loja ${fresh.name.trim()} adicionada. Ela já aparece no checkout.`,
+    );
+
+  const remove = (s: AdminStore) => {
+    if (!confirm(`Tirar a loja ${s.name} da lista do checkout? Os pedidos já feitos nela continuam no relatório.`)) return;
+    void run(s.id, () => adminApi.removeStore(s.id), `Loja ${s.name} removida da lista.`);
+  };
+
   async function save(s: AdminStore) {
     const row = rows[s.id]!;
     setBusy(s.id);
@@ -80,18 +111,51 @@ export function StoresSection({ data, onChange }: SectionProps) {
                     />
                   </td>
                   <td>
-                    <button type="button" className="btn btn--primary btn--sm" disabled={busy === s.id || !changed || row.name.trim().length < 2} onClick={() => void save(s)}>
-                      Salvar
-                    </button>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button type="button" className="btn btn--primary btn--sm" disabled={busy === s.id || !changed || row.name.trim().length < 2} onClick={() => void save(s)}>
+                        Salvar
+                      </button>
+                      <button type="button" className="btn btn--soft btn--sm" disabled={busy === s.id || data.stores.length <= 1} onClick={() => remove(s)}>
+                        Remover
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
             })}
+            <tr>
+              <td>
+                <input
+                  className="input input--sm"
+                  aria-label="Nome da nova loja"
+                  placeholder="Nova loja"
+                  value={fresh.name}
+                  onChange={(e) => setFresh((f) => ({ ...f, name: e.target.value }))}
+                />
+              </td>
+              <td>
+                <input
+                  className="input input--sm"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="(48) 99999-9999"
+                  aria-label="WhatsApp do gerente da nova loja"
+                  value={fresh.whatsapp}
+                  onChange={(e) => setFresh((f) => ({ ...f, whatsapp: maskPhoneInput(e.target.value) }))}
+                />
+              </td>
+              <td>
+                <button type="button" className="btn btn--primary btn--sm" disabled={busy === -1 || fresh.name.trim().length < 2} onClick={() => void add()}>
+                  Adicionar loja
+                </button>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
       <div className="small">
-        Este é o único telefone que o cliente recebe. Loja sem número cadastrado fica sem o botão do WhatsApp no comprovante. A mensagem já vai
+        As lojas aparecem no checkout em ordem alfabética. Dois gerentes não precisam de lojas separadas: a mesma pessoa pode ter o número em mais
+        de uma loja. Este é o único telefone que o cliente recebe. Loja sem número cadastrado fica sem o botão do WhatsApp no comprovante. A mensagem já vai
         escrita: "Acabei de garantir o meu voucher … para a [moto], cor de preferência [cor]. Quero fechar a compra!".
       </div>
     </section>

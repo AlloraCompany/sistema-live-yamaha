@@ -321,6 +321,34 @@ describe('painel', () => {
     expect((await h.app.inject({ method: 'PATCH', url: '/api/admin/stores/99', headers: { cookie }, payload: { name: 'Outra' } })).statusCode).toBe(404);
   });
 
+  it('lojas podem ser adicionadas e removidas pelo painel; telefone fixo também vale como contato', async () => {
+    const { cookie } = await admin();
+    const post = (payload: Record<string, unknown>) => h.app.inject({ method: 'POST', url: '/api/admin/stores', headers: { cookie }, payload });
+    const del = (id: number) => h.app.inject({ method: 'DELETE', url: `/api/admin/stores/${id}`, headers: { cookie } });
+
+    const created = await post({ name: 'Balneário Camboriú', whatsapp: '(47) 3333-4444' }); // número fictício, fixo
+    expect(created.statusCode).toBe(201);
+    const id = created.json().id as number;
+    const names = (created.json().stores as { name: string }[]).map((s) => s.name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, 'pt-BR'))); // ordem alfabética
+    expect(created.json().stores.find((s: { id: number }) => s.id === id)).toMatchObject({ name: 'Balneário Camboriú', whatsapp: '554733334444' });
+    expect((await h.snapshot()).stores.map((s) => s.id)).toContain(id);
+    expect((await post({ name: 'balneario camboriu' })).statusCode).toBe(422); // mesmo nome
+
+    // Remover tira do checkout (a loja não é apagada) e a compra nela passa a ser recusada.
+    const removed = await del(id);
+    expect(removed.statusCode).toBe(200);
+    expect(removed.json().map((s: { id: number }) => s.id)).not.toContain(id);
+    expect((await h.snapshot()).stores.map((s) => s.id)).not.toContain(id);
+    expect((await h.createOrder(orderInput(900, { storeId: id }))).status).toBe(422);
+    expect((await del(id)).statusCode).toBe(404);
+
+    // Adicionar de novo com o mesmo nome reaproveita a loja removida.
+    const back = await post({ name: 'Balneário Camboriú', whatsapp: null });
+    expect(back.json().id).toBe(id);
+    await del(id);
+  });
+
   it('páginas abertas pelo endereço *.fly.dev vão para o endereço oficial; a API continua respondendo', async () => {
     const flyHost = { host: 'live-yamaha-geracao.fly.dev' };
     const page = await h.app.inject({ method: 'GET', url: '/painel?x=1', headers: flyHost });

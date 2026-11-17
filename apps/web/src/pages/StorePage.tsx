@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
-import { formatBRL, formatDate, formatInt, formatLiveStart, formatTime } from '@lle/shared';
+import { formatBRL, formatDate, formatInt, formatTime } from '@lle/shared';
 import { StoreLayout } from '../components/Layout';
 import { LivePill } from '../components/SiteChrome';
 import { MotoCard } from '../components/MotoCard';
 import { Thermometer } from '../components/Thermometer';
 import { IconEye, IconExternal, IconGift, IconLive, IconPlay } from '../components/Icons';
-import { minutesAgo, useLive, useNow, useThermometer } from '../lib/live';
+import { useLive, useNow, useThermometer } from '../lib/live';
 
 /** "19/11 às 10h" (10h30 quando há minutos), no horário de Brasília. */
 function formatDeadline(iso: string): string {
@@ -98,12 +98,7 @@ function Player() {
 function SoldBanner() {
   const { snapshot } = useLive();
   const p = useThermometer();
-  const now = useNow(30_000);
   if (!snapshot || !p) return null;
-  const last15 = snapshot.sales.recent.filter((t) => now - new Date(t).getTime() <= 15 * 60_000).length;
-  const recent = snapshot.sales.lastSaleAt
-    ? `Última venda ${minutesAgo(snapshot.sales.lastSaleAt, now)}${last15 ? ` · ${last15} nos últimos 15 min` : ''}`
-    : 'Seja a primeira pessoa a garantir a sua';
   return (
     <div className="sold-banner" aria-live="polite">
       <div className="sold-banner__count">
@@ -116,7 +111,8 @@ function SoldBanner() {
       </div>
       <span className="sold-banner__sep" />
       <div className="sold-banner__info">
-        <div className="sold-banner__recent">{recent}</div>
+        {/* Sem "Última venda há X min" (pedido de 17/11/2026). Enquanto ninguém comprou, fica só o convite. */}
+        {p.sold === 0 && <div className="sold-banner__recent">Seja a primeira pessoa a garantir a sua</div>}
         {snapshot.live.showThermometer && p.next && (
           <div className="sold-banner__goal">
             Faltam <strong className="y">{p.next.remaining}</strong> para liberar <strong>{p.next.prize}</strong> para todo mundo que comprar na live
@@ -156,11 +152,21 @@ function VoucherCard() {
   );
 }
 
-const HOW = (holdMinutes: number) => [
+/** "A, B ou C" com os nomes das lojas do painel. */
+function storeList(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} ou ${names[names.length - 1]}`;
+}
+
+const HOW = (holdMinutes: number, stores: string[]) => [
   ['Acompanhe a live', 'As motos aparecem bloqueadas e são liberadas uma a uma conforme o apresentador anuncia. Enquanto espera, veja fotos, cores e ficha técnica.'],
   ['Pague o voucher', `Pix ou cartão. Enquanto o Pix não é pago, a unidade fica segurada para você por ${holdMinutes} minutos. Com o pagamento confirmado, ela fica reservada no seu nome.`],
-  ['Feche com o gerente', 'Com o voucher pago, o comprovante traz o botão do WhatsApp do gerente da loja que você escolheu. É com ele a análise de crédito e o fechamento da compra.'],
-  ['Retire na loja', 'Via Expressa, Centro ou Sul da Ilha, com o voucher abatido da entrada. A data da retirada é combinada com o gerente depois da aprovação do crédito.'],
+  ['Feche com a loja', 'Com o voucher pago, o comprovante traz o botão do WhatsApp da loja que você escolheu. É por ali a análise de crédito e o fechamento da compra.'],
+  [
+    'Retire na loja',
+    // Com muitas lojas a lista não cabe na frase: os nomes ficam no checkout e no rodapé.
+    `${stores.length > 0 && stores.length <= 4 ? `Na loja que você escolher (${storeList(stores)})` : 'Na loja que você escolher'}, com o voucher abatido da entrada. A data da retirada é combinada com a loja depois da aprovação do crédito.`,
+  ],
 ];
 
 export function StorePage() {
@@ -217,7 +223,6 @@ export function StorePage() {
             <IconLive />
             {live?.status === 'ao_vivo' ? 'AO VIVO NO YOUTUBE' : live?.status === 'encerrada' ? 'LIVE ENCERRADA' : 'LIVE NO YOUTUBE'}
           </span>
-          {live?.startsAt && <span className="hero__date">{formatLiveStart(live.startsAt)}</span>}
         </div>
         <h1 className="display hero__title">
           Live Limpa Estoque <span className="hl">Yamaha</span>
@@ -285,7 +290,7 @@ export function StorePage() {
           Como <span>funciona</span>
         </h2>
         <div className="how__grid">
-          {HOW(live?.holdMinutes ?? 30).map(([title, text], i) => (
+          {HOW(live?.holdMinutes ?? 30, snapshot?.stores.map((s) => s.name) ?? []).map(([title, text], i) => (
             <div key={title} className={`how__step ${i === 3 ? 'how__step--hl' : ''}`}>
               <div className="how__num">{String(i + 1).padStart(2, '0')}</div>
               <div>

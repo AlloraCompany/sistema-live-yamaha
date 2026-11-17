@@ -56,7 +56,7 @@ function drawReceipt(doc: PDFKit.PDFDocument, view: OrderView, store: Store): vo
     ['Pago', `${formatBRL(view.voucherCents)} via ${view.paidWith === 'card' ? 'cartão de crédito' : 'Pix'}`],
     ['Transação Mercado Pago', view.payment ? `nº ${view.payment.id}` : '-'],
     ['Loja de preferência', view.store.name],
-    ...(view.storeWhatsapp ? ([['WhatsApp do gerente da loja', formatBrPhone(view.storeWhatsapp)]] as [string, string][]) : []),
+    ...(view.storeWhatsapp ? ([['Contato da loja (WhatsApp)', formatBrPhone(view.storeWhatsapp)]] as [string, string][]) : []),
     ['Data', view.paidAt ? formatDateTime(view.paidAt) : '-'],
   ];
   let y = 164;
@@ -67,25 +67,20 @@ function drawReceipt(doc: PDFKit.PDFDocument, view: OrderView, store: Store): vo
     y += 28; // 12 linhas (com a cor de preferência) precisam caber acima do rodapé
   }
 
-  y += 10;
-  doc.roundedRect(48, y, width, 54, 8).fill('#EEF3FE');
+  // Aviso discreto: texto pequeno e cinza, sem caixa colorida (pedido de 17/11/2026).
+  doc.moveTo(48, y - 8).lineTo(48 + width, y - 8).strokeColor('#E6E7EA').lineWidth(1).stroke();
   doc
     .font('Helvetica')
-    .fontSize(10.5)
-    .fillColor(BLUE)
-    .text(
-      'Valor abatido da entrada no fechamento. Devolução integral se o crédito não for aprovado.',
-      64,
-      y + 14,
-      { width: width - 32 },
-    );
+    .fontSize(9)
+    .fillColor(GREY)
+    .text('Valor abatido da entrada no fechamento. Devolução integral se o crédito não for aprovado.', 48, y + 2, { width });
 
-  y += 84;
+  y += 44;
   doc.font('Helvetica-Bold').fontSize(13).fillColor(INK).text('O que acontece agora', 48, y);
   const steps = [
-    `Chame o gerente da loja ${view.store.name} no WhatsApp e mande este comprovante.`,
+    `Chame a loja ${view.store.name} no WhatsApp e mande este comprovante.`,
     'Envie RG ou CNH e comprovante de renda pelo WhatsApp para a análise de crédito.',
-    `Com o crédito aprovado, o gerente combina com você o fechamento da compra e a retirada na loja ${view.store.name}.`,
+    `Com o crédito aprovado, a loja ${view.store.name} combina com você o fechamento da compra e a retirada.`,
   ];
   y += 24;
   steps.forEach((s, i) => {
@@ -99,7 +94,8 @@ function drawReceipt(doc: PDFKit.PDFDocument, view: OrderView, store: Store): vo
     .fontSize(9)
     .fillColor(GREY)
     .text(
-      `${store.legalName}${store.cnpj ? ` · CNPJ ${store.cnpj}` : ''} · Via Expressa · Centro · Sul da Ilha · Florianópolis/SC. ` +
+      // A loja vem do pedido (nome cadastrado no painel), não de uma lista fixa no código.
+      `${store.legalName}${store.cnpj ? ` · CNPJ ${store.cnpj}` : ''} · Loja ${view.store.name}. ` +
         `Pagamento processado pelo Mercado Pago. O código ${view.code} é único e identifica esta reserva. ` +
         'A nota fiscal da moto é emitida pela loja no faturamento.',
       48,

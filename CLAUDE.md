@@ -39,6 +39,14 @@ Comece pelo [README.md](README.md) e por [docs/PUBLICACAO.md](docs/PUBLICACAO.md
   - **Cartão**: a CSP do site libera os endereços do Mercado Pago (`*.mlstatic.com`, `*.mercadolivre.com`) e
     scripts embutidos, exigidos pelo formulário de cartão e pelo antifraude; `script-src-attr 'none'` continua.
   - Antes de qualquer recurso pago no Fly, avisar o valor e esperar o ok.
+- Pedidos da operação em **17/11/2026**:
+  - **Lojas**: são mais de três; o painel adiciona e remove lojas (remover só tira do checkout) e a lista sai em
+    ordem alfabética. Rodapé do site, "Como funciona" e PDF usam os nomes do painel (nada fixo no código).
+  - **Cliente não vê a palavra "gerente" ligada ao telefone**: no comprovante é "Falar com a loja X" e "Contato
+    da loja". No painel o campo continua "WhatsApp do gerente".
+  - **Loja sem data e sem "Última venda"**: o topo mostra só o selo "AO VIVO NO YOUTUBE" (o campo "Data e hora"
+    saiu do painel) e o banner azul não mostra mais "Última venda há X min".
+  - **Aviso do PDF** ("Valor abatido da entrada…") em texto pequeno e cinza, sem caixa azul.
 
 ## Estado em 16/11/2026
 
@@ -51,8 +59,8 @@ Comece pelo [README.md](README.md) e por [docs/PUBLICACAO.md](docs/PUBLICACAO.md
   17/11 e decidir se a live usa máquina dedicada (cerca de US$ 3,50/dia).
 - **ATENÇÃO**: o voucher está em **R$ 1** desde 16/11 para o teste real de pagamento. **Voltar para R$ 1.000**
   (painel → Transmissão) antes da live e conferir no ensaio de 17/11.
-- **Faltam**: motos reais (serão **21 modelos diferentes**, chegam preenchidos em 17/11; importar com `docs/planilha-motos.xlsx`), teste real do **cartão** (o Pix de R$ 1 foi aprovado de ponta a ponta em 16/11), devolver o R$ 1 pelo
-  Mercado Pago, limpar os dados do ensaio (`ensaio:limpar --confirmar --apagar-pagos`), ajustar "Espectadores
+- **Faltam**: motos reais (serão **21 modelos diferentes**, chegam preenchidos em 17/11; importar com `docs/planilha-motos.xlsx`), devolver pelo Mercado Pago os dois pagamentos de teste de R$ 1 (Pix em 16/11 e cartão em 17/11, ambos
+  aprovados de ponta a ponta), limpar os dados do ensaio (`ensaio:limpar --confirmar --apagar-pagos`), ajustar "Espectadores
   exibidos", WhatsApp do gerente de cada loja no painel, conferir vídeo automático no celular/iPhone.
 - Ajustes do designer feitos em 12/11: logo horizontal, cabeçalho fixo com "Voltar à live" na página da live, barra
   fixa de atalhos no painel, sem termômetro na reserva confirmada, seta própria nas listas.
